@@ -37,7 +37,8 @@ GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を�
 1. [KONAMI のアップデート一覧](https://www.konami.com/games/prospi/2026/jp/ja/update_list)から、「〇年〇月〇日時点の選手の収録」と書かれた最新のアップデートを探す。`data_version.txt` と同じバージョンなら何もしない。
 2. [armstjc/Nippon-Baseball-Data-Repository](https://github.com/armstjc/Nippon-Baseball-Data-Repository/releases/tag/rosters) の最新年の `YYYY_npb_rosters.csv` から、締め日の支配下選手を推定する。
 3. `data.csv` の12球団の選手を NPB ID で照合して、追加・移籍・削除を反映する。新しい選手は ID 付きで末尾に足す。名前は書き換えない。NPB ID のない行（12球団以外の区分、FREE、名簿 CSV にいない選手）は変えない。
-4. `index.html` を作り直して PR を作る。PR に変更内容と要確認の選手が載る。
+4. OB（監督・コーチ）は、Wikipedia「[プロ野球スピリッツ2026](https://ja.wikipedia.org/wiki/%E3%83%97%E3%83%AD%E9%87%8E%E7%90%83%E3%82%B9%E3%83%94%E3%83%AA%E3%83%83%E3%83%842026#%E7%9B%A3%E7%9D%A3%E3%83%BB%E3%82%B3%E3%83%BC%E3%83%81)」の「監督・コーチ」の表に合わせる。名前で照合して、追加・削除・所属と役職（監督／コーチ）の変更を反映する。備考が「1軍監督」「2軍監督」なら監督、空欄ならコーチ、「「FREE」枠へ移動」なら所属は FREE。WORLD STAR は同じ記事の「海外移籍選手」の表に合わせ、名前だけで追加・削除する（ポジションは空）。表を読めなかったとき（節や球団が見つからない、選手名のリンクがない、同じ名前が複数ある）は、エラーで止まる。
+5. `index.html` を作り直して PR を作る。PR に変更内容と要確認の選手が載る。
 
 手動で動かすときは Actions の「収録選手の同期」から実行する（`dry_run` で変更案だけ確認できる）。
 
@@ -49,6 +50,8 @@ CSV には選手ごとに最新の公示が1件しか載らないため、締め
 - NPB ID のある選手が CSV から消えたら（例：シーズン途中の退団）、いつ抜けたか分からないので変更せず、PR の「要確認」に載せる。NPB ID が分からない選手は、ID を空にしておけば同期の対象外になる。
 - FREE の選手が球団と契約したときは、同期では直らない。`team` と `npb_id` を手で書き換える。
 - 締め日より後のトレードは、新しい所属で取り込まれてしまう。
+- Wikipedia の表は締め日ではなく今の内容なので、締め日より後の編集が入ることがある。OB と WORLD STAR の `npb_id` は空のまま（Wikipedia に ID がない）。
+- Wikipedia の確認は、KONAMI の新しいアップデートを検知したときにだけ行う。そのとき Wikipedia がまだ更新されていないと、次のアップデートまで反映されない。その場合は `force` で手動実行する。
 
 ### 必要な設定
 

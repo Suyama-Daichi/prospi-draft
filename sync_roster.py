@@ -10,10 +10,14 @@ import io
 import json
 import re
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
 KONAMI = "https://www.konami.com/games/prospi/2026/jp/ja/"
+WIKI = "プロ野球スピリッツ2026"  # この記事の「監督・コーチ」「海外移籍選手」の表が OB・WORLD STAR の一覧
+OB = "OB（監督・コーチ）"
+WS = "WORLD STAR"
 ROSTERS = "https://api.github.com/repos/armstjc/Nippon-Baseball-Data-Repository/releases/tags/rosters"
 UA = "prospi-draft-sync (+https://github.com/Suyama-Daichi/prospi-draft)"
 TEAMS = {
@@ -56,6 +60,67 @@ def load_csv():
     year, url = max((int(m[1]), a["url"]) for a in assets if (m := re.fullmatch(r"(\d{4})_npb_rosters\.csv", a["name"])))
     data = fetch(url, {"Accept": "application/octet-stream"})  # API 経由で取得（github.com のダウンロード URL は 504 を返すことがある）
     return year, list(csv.DictReader(io.StringIO(data.decode("utf-8-sig"))))
+
+
+def parse_ob(wikitext):
+    """Wikipedia の「監督・コーチ」の表を [{team, name, position}] にする。
+
+    表は「球団（rowspan）||選手名のリンク||備考」。備考が「1軍監督」「2軍監督」なら監督、空欄ならコーチ。
+    「「FREE」枠へ移動」と書かれた人は所属が FREE。
+    """
+    out, team = [], None
+    for cells in wiki_table(wikitext, "監督・コーチ"):
+        if len(cells) >= 3:  # 先頭は球団（rowspan="5" |球団名）
+            team = cells.pop(0).rsplit("|", 1)[-1].strip()
+            if team not in TEAMS.values() and team not in TEAMS:
+                raise RuntimeError(f"Wikipedia の表に知らない球団名があります: {team}")
+        note = cells[1] if len(cells) > 1 else ""
+        out.append({"team": "FREE" if "「FREE」枠へ移動" in note else TEAMS.get(team, team), "name": wiki_name(cells[0]),
+                    "position": "監督" if re.match(r"[12]軍監督", note) else "コーチ"})
+    if set(TEAMS.values()) - {o["team"] for o in out}:
+        raise RuntimeError("Wikipedia の表から読めた球団が足りません（表の形式が変わった可能性）")
+    return unique(out)
+
+
+def parse_world_star(wikitext):
+    """Wikipedia の「海外移籍選手」の表（年||球団(当時)||選手名||備考）を [{team, name, position}] にする。"""
+    out = [{"team": WS, "name": wiki_name(cells[-2]), "position": ""} for cells in wiki_table(wikitext, "海外移籍選手")]
+    if not out:
+        raise RuntimeError("Wikipedia の「海外移籍選手」の表に選手がいません（表の形式が変わった可能性）")
+    return unique(out)
+
+
+def wiki_table(wikitext, heading):
+    """節 heading の表を、行ごとのセル（「||」区切り）のリストにする。見出し行と表の閉じは除く。"""
+    sec = re.search(rf"^=+\s*{heading}\s*=+\s*$(.*?)(?=^=|\Z)", wikitext, re.S | re.M)
+    if not sec:
+        raise RuntimeError(f"Wikipedia に「{heading}」の節が見つかりません（記事の形式が変わった可能性）")
+    rows = []
+    for chunk in sec[1].split("\n|-"):
+        line = chunk.strip().split("\n")[0]
+        if line.startswith("|") and not line.startswith("|}"):
+            rows.append([c.strip() for c in line[1:].split("||")])
+    return rows
+
+
+def wiki_name(cell):
+    """セルの [[記事名|表示名]] から表示名を取り、空白を除く。リンクがなければ表の形式が変わったとみなす。"""
+    link = re.search(r"\[\[(?:[^\]|]*\|)?([^\]|]+)\]\]", cell)
+    if not link:
+        raise RuntimeError(f"Wikipedia の表の選手名を読めません: {cell!r}（表の形式が変わった可能性）")
+    return norm(link[1])
+
+
+def unique(wiki):
+    names = [w["name"] for w in wiki]
+    if len(names) != len(set(names)):
+        raise RuntimeError(f"Wikipedia の表に同じ名前が複数あります: {sorted(n for n in set(names) if names.count(n) > 1)}")
+    return wiki
+
+
+def load_wikitext():
+    q = urllib.parse.urlencode({"action": "parse", "page": WIKI, "prop": "wikitext", "format": "json", "formatversion": 2})
+    return json.loads(fetch("https://ja.wikipedia.org/w/api.php?" + q))["parse"]["wikitext"]
 
 
 def roster_at(rows, cut):
@@ -125,11 +190,37 @@ def plan(rows, players):
     return out, rep
 
 
+def plan_wiki(rows, wiki, category):
+    """category の行を Wikipedia の表に合わせる。名前で照合し、新しい人は NPB ID なしで行末に足す。他の区分の行は変えない。"""
+    rep = collections.defaultdict(list)
+    want = {w["name"]: w for w in wiki}
+    label = lambda x: "・".join(v for v in (x["team"], x["position"]) if v)  # ポジションが空の区分もある
+    seen, out = set(), []
+    for r in rows:
+        n = norm(r["name"])
+        if r["category"] != category:
+            out.append(r)
+        elif n not in want:
+            rep[f"{category}の削除"].append(f"{r['name']}（{label(r)}）")
+        else:
+            seen.add(n)
+            w = want[n]
+            if (r["team"], r["position"]) != (w["team"], w["position"]):
+                rep[f"{category}の変更"].append(f"{r['name']}：{label(r)}→{label(w)}")
+                r = {**r, "team": w["team"], "position": w["position"]}
+            out.append(r)
+    for n, w in want.items():
+        if n not in seen:
+            out.append({"category": category, "team": w["team"], "name": n, "position": w["position"], "npb_id": ""})
+            rep[f"{category}の追加"].append(f"{n}（{label(w)}）")
+    return out, rep
+
+
 def render(ver, cut, year, rep, dry):
     head = "（ドライラン：何も変更していません）\n\n" if dry else ""
     lines = [head + f"KONAMI の [Ver{ver}]({KONAMI}update_list)（{cut[:4]}年{int(cut[4:6])}月{int(cut[6:])}日時点の選手を収録）に合わせて、"
              f"{year}年の [NPB 名簿 CSV](https://github.com/armstjc/Nippon-Baseball-Data-Repository/releases/tag/rosters) から "
-             f"data.csv の12球団の選手を更新{'します' if dry else 'しました'}。", ""]
+             f"data.csv の12球団の選手を更新し、OB（監督・コーチ）と WORLD STAR を [Wikipedia](https://ja.wikipedia.org/wiki/{urllib.parse.quote(WIKI)}) の表に合わせ{'ます' if dry else 'ました'}。", ""]
     for title, items in rep.items():
         lines += [f"## {title}（{len(items)}人）", *[f"- {x}" for x in items], ""]
     lines.append("ゲームでは削除ではなく FREE に移る選手もいるので、削除した選手を確認してください。")
@@ -146,6 +237,10 @@ def main():
     year, csv_rows = load_csv()
     data = BASE / "data.csv"
     rows, rep = plan(parse(data.read_text(encoding="utf-8")), roster_at(csv_rows, cut))
+    wikitext = load_wikitext()
+    for wiki, category in ((parse_ob(wikitext), OB), (parse_world_star(wikitext), WS)):
+        rows, rep_wiki = plan_wiki(rows, wiki, category)
+        rep.update(rep_wiki)
     dry = "--dry-run" in args
     print(render(ver, cut, year, rep, dry))
     if dry:
