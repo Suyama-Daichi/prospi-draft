@@ -197,7 +197,7 @@ select:disabled { opacity: .5; }
           <button type="button" class="primary" id="add">チームに追加</button>
         </div>
       </div>
-      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。スタメン9人の守備は重複できません。データは2026年11月9日時点（ゲームのVer2.3.0相当）。</p>
+      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。スタメン9人の守備は重複できません。データはゲームの{{DATA_VER}}相当。</p>
     </section>
 
     <section class="panel" aria-labelledby="team-h">
@@ -239,7 +239,8 @@ const CATS = ["12球団", "WBC2026代表", "歴代日本代表", "OB（監督・
 const CAT_LABEL = ["12球団", "WBC2026代表", "歴代日本代表", "OB（監督・コーチ）", "WORLD STAR"];
 const CAT_VAR = ["--c-npb", "--c-wbc", "--c-jpn", "--c-ob", "--c-ws"];
 const RAW = /*DATA*/[];
-const STORE_KEY = "prospi2026-random-draft-v1";
+// 選手IDはデータの並び順なので、データが変わったら古い保存を読まないよう保存キーにデータのハッシュを含める
+const STORE_KEY = "prospi2026-random-draft-v1-" + [...JSON.stringify(RAW)].reduce((h, c) => Math.imul(h, 31) + c.codePointAt(0) | 0, 0).toString(36);
 const PASS_MAX = 3;
 const DRAW_DEFAULT = 7;
 const DRAW_MIN = 1, DRAW_MAX = 20;
@@ -704,7 +705,7 @@ async function makeImage() {
   }
   const passes = state.rounds.filter(r => r.type === "pass").length;
   x.fillStyle = muted; x.font = "500 18px " + body;
-  x.fillText(state.rounds.length + "巡 ・ パス" + passes + "回 ・ データ：プロスピ2026 収録選手（2026年11月時点）", P, H - 40);
+  x.fillText(state.rounds.length + "巡 ・ パス" + passes + "回 ・ データ：プロスピ2026 {{DATA_VER}}", P, H - 40);
   return cv;
 }
 let lastBlob = null;
