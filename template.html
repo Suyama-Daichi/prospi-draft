@@ -200,7 +200,7 @@ footer.foot a { color: inherit; }
           <button type="button" class="primary" id="add">チームに追加</button>
         </div>
       </div>
-      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。スタメン9人の守備は重複できません。データはゲームの{{DATA_VER}}相当。</p>
+      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。ただし、NPBに復帰した選手（WORLD STARと12球団の同名）は別の選手です。スタメン9人の守備は重複できません。データはゲームの{{DATA_VER}}相当。</p>
     </section>
 
     <section class="panel" aria-labelledby="team-h">
@@ -281,10 +281,13 @@ function teamLabel(pl) {
   }
 }
 function posLabel(pl) { return pl.p || "—"; }
-// 同姓同名でも、同じ12球団同士・同じWBC同士は別人（例：ソフトバンクと中日のロドリゲス）。それ以外の区分をまたぐ同名は同一人物とみなす。
+// 同姓同名でも、同じ12球団同士・同じWBC同士は別人（例：ソフトバンクと中日のロドリゲス）。
+// WORLD STAR（NPBを離れた選手）と12球団の同名も別人（NPBに復帰した選手。例：小笠原慎之介。ゲームでも別選手扱い）。
+// それ以外の区分をまたぐ同名は同一人物とみなす。
 function samePerson(a, b) {
   if (a.key !== b.key) return false;
   if (a.c === b.c && (a.c === 0 || a.c === 1)) return a.id === b.id;
+  if ((a.c === 0 && b.c === 4) || (a.c === 4 && b.c === 0)) return false;
   return true;
 }
 function slotDefault(pl) {
