@@ -1,0 +1,3 @@
+# 公開するのは index.html だけ（コード・data.csv・README などは配信しない）
+*
+!index.html
