@@ -66,3 +66,7 @@ CSV には選手ごとに最新の公示が1件しか載らないため、締め
 ### 必要な設定
 
 リポジトリの Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする。
+
+## ライセンス
+
+コードは [MIT License](LICENSE)。非公式のファンツールで、KONAMI・NPB・各球団とは関係ない。`data.csv` の選手名、ゲーム名などの権利は、それぞれの権利者に帰属する。
