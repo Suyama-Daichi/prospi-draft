@@ -27,6 +27,8 @@ ALIASES = {
     "R.マルティネス": "マルティネス", "スチュワートJr.": "スチュワート・ジュニア", "張峻瑋": "張峻ウェイ",
     "安徳駿": "安德駿", "廣瀬隆太": "廣瀨隆太", "高橋隆慶": "髙橋隆慶",
 }
+# 名簿 CSV にいないが、ゲームに収録されていると確認済みの選手（照合せずに残す）
+NOT_IN_CSV = {"ペルドモ", "セデーニョ"}
 BASE = Path(__file__).resolve().parent
 
 
@@ -98,7 +100,7 @@ def plan(rows, players):
     left = dict(players)  # まだ照合していない名簿の選手
     out = []
     for r in rows:
-        if r["cat"] != "12球団" or r["team"] == "FREE":
+        if r["cat"] != "12球団" or r["team"] == "FREE" or r["name"] in NOT_IN_CSV:
             out.append(r)
             continue
         # 名前と所属で、なければ名前だけで1人に決まる選手と照合する
