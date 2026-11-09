@@ -7,5 +7,10 @@
   "assets": {
     "directory": "."
   },
+  "routes": [
+    { "pattern": "prospi-draft.d0nchan.com", "custom_domain": true }
+  ],
+  // routes があると既定で false になる。*.workers.dev の URL も残す。
+  "workers_dev": true,
   "previews": {}
 }

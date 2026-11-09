@@ -32,7 +32,9 @@ python3 build.py .
 
 ## 公開（Cloudflare Workers）
 
-https://prospi-draft.symdit.workers.dev/ で公開している。Cloudflare の Git 連携が、このリポジトリのルートを静的アセットとして配信する（`wrangler.jsonc` の `assets.directory` が `.`）。
+https://prospi-draft.d0nchan.com/ で公開している。`*.workers.dev` の https://prospi-draft.symdit.workers.dev/ でも開ける。Cloudflare の Git 連携が、このリポジトリのルートを静的アセットとして配信する（`wrangler.jsonc` の `assets.directory` が `.`）。
+
+ドメインは `wrangler.jsonc` の `routes`（`custom_domain`）で設定する。`d0nchan.com` のゾーンが、この Worker と同じ Cloudflare アカウントにあることが前提。`routes` があると `workers_dev` の既定が `false` になるので、`workers.dev` の URL を残すために `true` と書いている。
 
 配信の設定は `wrangler.jsonc`。`main` 以外のブランチは Cloudflare がプレビューとして公開し、その設定が `previews`（空でよい）。`previews` が無いと、`main` 以外のブランチのビルドが失敗する。
 
