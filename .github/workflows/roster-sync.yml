@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: data.txt を更新する
+      - name: data.csv を更新する
         shell: bash
         env:
           FORCE: ${{ inputs.force && '--force' || '' }}

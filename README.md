@@ -13,10 +13,10 @@
 
 ## ファイル
 
-- `data.txt`：収録選手データ。1行が「区分|所属|選手名:ポジション,…」。
-- `data_version.txt`：`data.txt` が対応するゲームのバージョンと、収録選手の締め日（例：`2.3.0 20260731`）。
+- `data.csv`：収録選手データ（1行1人）。列は `category,team,name,position,npb_id`。`npb_id` は [NPB 名簿 CSV](https://github.com/armstjc/Nippon-Baseball-Data-Repository/releases/tag/rosters) の `person_id` で、12球団の選手に入る。同じ `category` の中では重複できない（`build.py` がエラーにする）。`name` は表示用で、表記は自由に直してよい。行の並びが選手IDになるので、並びを変えると保存中の編成は読み込まれない。
+- `data_version.txt`：`data.csv` が対応するゲームのバージョンと、収録選手の締め日（例：`2.3.0 20260731`）。
 - `template.html`：ページ本体。`/*DATA*/[]` にデータ、`{{DATA_VER}}` にバージョンが入る。
-- `build.py`：`data.txt` と `data_version.txt` を埋め込んで `index.html` を作る。
+- `build.py`：`data.csv` と `data_version.txt` を埋め込んで `index.html` を作る。
 - `index.html`：生成物。そのままブラウザで開ける。
 - `sync_roster.py`：収録選手の同期（下記）。テストは `python3 -m unittest test_sync_roster`。
 
@@ -28,7 +28,7 @@ python3 build.py .
 
 ## データの出典
 
-初版は Notion「プロスピ2026 収録選手リスト」（KONAMI公式サイト、NPB.jp、攻略サイト、Wikipediaを基に作成）から書き出した。以後の更新は `data.txt` が正本で、Notion は更新しない。
+初版は Notion「プロスピ2026 収録選手リスト」（KONAMI公式サイト、NPB.jp、攻略サイト、Wikipediaを基に作成）から書き出した。以後の更新は `data.csv` が正本で、Notion は更新しない。
 
 ## 収録選手の同期
 
@@ -36,7 +36,7 @@ GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を�
 
 1. [KONAMI のアップデート一覧](https://www.konami.com/games/prospi/2026/jp/ja/update_list)から、「〇年〇月〇日時点の選手の収録」と書かれた最新のアップデートを探す。`data_version.txt` と同じバージョンなら何もしない。
 2. [armstjc/Nippon-Baseball-Data-Repository](https://github.com/armstjc/Nippon-Baseball-Data-Repository/releases/tag/rosters) の最新年の `YYYY_npb_rosters.csv` から、締め日の支配下選手を推定する。
-3. `data.txt` の12球団の選手を名前と所属で照合して、追加・移籍・削除を反映する（12球団以外の区分と FREE の選手は変えない）。CSV と表記が違う選手は `sync_roster.py` の `ALIASES` に書く。
+3. `data.csv` の12球団の選手を NPB ID で照合して、追加・移籍・削除を反映する。新しい選手は ID 付きで末尾に足す。名前は書き換えない。NPB ID のない行（12球団以外の区分、FREE、名簿 CSV にいない選手）は変えない。
 4. `index.html` を作り直して PR を作る。PR に変更内容と要確認の選手が載る。
 
 手動で動かすときは Actions の「収録選手の同期」から実行する（`dry_run` で変更案だけ確認できる）。
@@ -45,8 +45,9 @@ GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を�
 
 CSV には選手ごとに最新の公示が1件しか載らないため、締め日の状態は推定になる。
 
-- 締め日より後の「育成選手登録」は、支配下からの移行か新しい育成契約か区別できない。この選手は `data.txt` にいれば残し、いなければ追加しない。
-- CSV から消えた選手（例：シーズン途中の退団）は、いつ抜けたか分からないので変更しない。ゲームに収録されていると確認できたら、`sync_roster.py` の `NOT_IN_CSV` に書くと「要確認」に載らなくなる。
+- 締め日より後の「育成選手登録」は、支配下からの移行か新しい育成契約か区別できない。この選手は `data.csv` にいれば残し、いなければ追加しない。
+- NPB ID のある選手が CSV から消えたら（例：シーズン途中の退団）、いつ抜けたか分からないので変更せず、PR の「要確認」に載せる。NPB ID が分からない選手は、ID を空にしておけば同期の対象外になる。
+- FREE の選手が球団と契約したときは、同期では直らない。`team` と `npb_id` を手で書き換える。
 - 締め日より後のトレードは、新しい所属で取り込まれてしまう。
 
 ### 必要な設定

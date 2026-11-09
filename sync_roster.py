@@ -1,8 +1,8 @@
-"""KONAMI の告知で収録選手が変わるアップデートを見つけたら、NPB 名簿 CSV で data.txt の12球団の選手を更新する。
+"""KONAMI の告知で収録選手が変わるアップデートを見つけたら、NPB 名簿 CSV で data.csv の12球団の選手を更新する。
 
 使い方: python3 sync_roster.py [--force] [--dry-run]
   --force    反映済みのアップデートでも取り込む
-  --dry-run  data.txt を変更せず、変更案だけ表示する
+  --dry-run  data.csv を変更せず、変更案だけ表示する
 """
 import collections
 import csv
@@ -22,13 +22,7 @@ TEAMS = {
     "埼玉西武ライオンズ": "西武", "北海道日本ハムファイターズ": "日本ハム", "千葉ロッテマリーンズ": "ロッテ",
     "オリックス・バファローズ": "オリックス", "福岡ソフトバンクホークス": "ソフトバンク", "東北楽天ゴールデンイーグルス": "楽天",
 }
-# data.txt と名簿 CSV で表記が違う選手（data.txt の表記 → CSV の表記）
-ALIASES = {
-    "R.マルティネス": "マルティネス", "スチュワートJr.": "スチュワート・ジュニア", "張峻瑋": "張峻ウェイ",
-    "安徳駿": "安德駿", "廣瀬隆太": "廣瀨隆太", "高橋隆慶": "髙橋隆慶",
-}
-# 名簿 CSV にいないが、ゲームに収録されていると確認済みの選手（照合せずに残す）
-NOT_IN_CSV = {"ペルドモ", "セデーニョ"}
+COLS = ["category", "team", "name", "position", "npb_id"]  # data.csv の列
 BASE = Path(__file__).resolve().parent
 
 
@@ -67,7 +61,7 @@ def load_csv():
 def roster_at(rows, cut):
     """CSV（各選手の最新の公示が1件だけ載る）から、締め日 cut に支配下だったかを推定する。
 
-    status は on（支配下）/ off（育成・退団）/ unknown（判別できない。data.txt にいれば残し、いなければ追加しない）。
+    status は on（支配下）/ off（育成・退団）/ unknown（判別できない。data.csv にいれば残し、いなければ追加しない）。
     """
     out = {}
     for r in sorted(rows, key=lambda r: r["announce_date"]):  # 同じ選手の行が複数あれば、新しい公示を使う
@@ -89,66 +83,53 @@ def roster_at(rows, cut):
 
 
 def parse(text):
-    """data.txt を {cat, team, name, pos} のリストにする。"""
-    return [{"cat": k, "team": t, "name": it.rsplit(":", 1)[0], "pos": it.rsplit(":", 1)[1]}
-            for k, t, p in (line.split("|", 2) for line in text.splitlines() if line.strip()) for it in p.split(",")]
+    """data.csv を行（COLS をキーにした辞書）のリストにする。"""
+    return list(csv.DictReader(io.StringIO(text)))
+
+
+def dump(rows):
+    buf = io.StringIO()
+    w = csv.DictWriter(buf, COLS, lineterminator="\n")
+    w.writeheader()
+    w.writerows(rows)
+    return buf.getvalue()
 
 
 def plan(rows, players):
-    """data.txt の行と締め日の名簿を照合して、更新後の行と報告を作る。12球団以外の区分と FREE の選手は変えない。"""
+    """data.csv の行を NPB ID で名簿と照合して、更新後の行と報告を作る。
+
+    選手名は表示用で書き換えない。NPB ID のない行（12球団以外の区分、FREE、名簿 CSV にいない選手）は変えない。
+    移籍は所属を更新し、削除は行を消し、新しい選手は行の末尾に足す。
+    """
     rep = collections.defaultdict(list)
-    left = dict(players)  # まだ照合していない名簿の選手
-    out = []
+    seen, out = set(), []
     for r in rows:
-        if r["cat"] != "12球団" or r["team"] == "FREE" or r["name"] in NOT_IN_CSV:
+        p = players.get(r["npb_id"])
+        if r["category"] != "12球団" or r["team"] == "FREE" or not r["npb_id"]:
             out.append(r)
             continue
-        # 名前と所属で、なければ名前だけで1人に決まる選手と照合する
-        n = ALIASES.get(r["name"], norm(r["name"]))
-        hit = [p for p in left.values() if p["name"] == n and p["team"] == r["team"]] or [p for p in left.values() if p["name"] == n]
-        if len(hit) != 1:
-            rep["要確認：名簿CSVの選手と照合できない（変更していません）"].append(f"{r['name']}（{r['team']}）")
-            out.append(r)
-            continue
-        p = left.pop(hit[0]["id"])
-        if p["status"] == "off":
+        seen.add(r["npb_id"])
+        if p is None:
+            rep["要確認：名簿CSVにいない（変更していません）"].append(f"{r['name']}（{r['team']}）")
+        elif p["status"] == "off":
             rep["削除"].append(f"{r['name']}（{r['team']}）：{p['why']}")
             continue
-        if p["team"] != r["team"] and p["status"] == "on":
+        elif p["status"] == "on" and p["team"] != r["team"]:
             rep["移籍"].append(f"{r['name']}：{r['team']}→{p['team']}")
-            r = dict(r, team=p["team"])
+            r = {**r, "team": p["team"]}
         out.append(r)
-    for p in left.values():
-        if p["status"] == "on":
-            out.append({"cat": "12球団", "team": p["team"], "name": p["name"], "pos": p["pos"]})
+    for pid, p in players.items():
+        if p["status"] == "on" and pid not in seen:
+            out.append({"category": "12球団", "team": p["team"], "name": p["name"], "position": p["pos"], "npb_id": pid})
             rep["追加"].append(f"{p['name']}（{p['team']}・{p['pos']}）")
     return out, rep
-
-
-def export(rows, old):
-    """行を data.txt の形にする。今の行順・選手順は保ち、新しい選手は行の末尾に足す。"""
-    groups = collections.defaultdict(list)
-    for r in rows:
-        for v in (r["cat"], r["team"], r["name"], r["pos"]):
-            if re.search(r"[|,:\n]", v):
-                raise ValueError(f"data.txt に書けない文字を含む値: {v!r}")
-        groups[(r["cat"], r["team"])].append((r["name"], r["pos"]))
-    old_lines = [line.split("|", 2) for line in old.splitlines() if line.strip()]
-    order = {(k, t): {it.rsplit(":", 1)[0]: i for i, it in enumerate(p.split(","))} for k, t, p in old_lines}
-    lines = []
-    for key in list(order) + sorted(set(groups) - set(order)):
-        o = order.get(key, {})
-        items = sorted(groups.pop(key, []), key=lambda x: (o.get(x[0], len(o)), x[0]))
-        if items:
-            lines.append(f"{key[0]}|{key[1]}|" + ",".join(f"{n}:{p}" for n, p in items))
-    return "\n".join(lines) + "\n"
 
 
 def render(ver, cut, year, rep, dry):
     head = "（ドライラン：何も変更していません）\n\n" if dry else ""
     lines = [head + f"KONAMI の [Ver{ver}]({KONAMI}update_list)（{cut[:4]}年{int(cut[4:6])}月{int(cut[6:])}日時点の選手を収録）に合わせて、"
              f"{year}年の [NPB 名簿 CSV](https://github.com/armstjc/Nippon-Baseball-Data-Repository/releases/tag/rosters) から "
-             f"data.txt の12球団の選手を更新{'します' if dry else 'しました'}。", ""]
+             f"data.csv の12球団の選手を更新{'します' if dry else 'しました'}。", ""]
     for title, items in rep.items():
         lines += [f"## {title}（{len(items)}人）", *[f"- {x}" for x in items], ""]
     lines.append("ゲームでは削除ではなく FREE に移る選手もいるので、削除した選手を確認してください。")
@@ -163,14 +144,13 @@ def main():
         print(f"Ver{ver} は反映済みです")
         return
     year, csv_rows = load_csv()
-    data = BASE / "data.txt"
-    old = data.read_text(encoding="utf-8")
-    rows, rep = plan(parse(old), roster_at(csv_rows, cut))
+    data = BASE / "data.csv"
+    rows, rep = plan(parse(data.read_text(encoding="utf-8")), roster_at(csv_rows, cut))
     dry = "--dry-run" in args
     print(render(ver, cut, year, rep, dry))
     if dry:
         return
-    data.write_text(export(rows, old), encoding="utf-8")
+    data.write_text(dump(rows), encoding="utf-8")
     vfile.write_text(f"{ver} {cut}\n", encoding="utf-8")
 
 
