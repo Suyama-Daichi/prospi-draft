@@ -24,6 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: テスト
+        run: python3 -m unittest test_sync_roster
+
       - name: data.csv を更新する
         shell: bash
         env:
