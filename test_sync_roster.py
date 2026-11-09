@@ -54,6 +54,11 @@ class Plan(unittest.TestCase):
         self.assertEqual(rep["要確認：名簿CSVの選手と照合できない（変更していません）"], ["不明六郎（巨人）"])
         self.assertEqual(len(rep), 4)  # 締め日の後に育成選手登録された選手（育成五郎）は追加も報告もしない
 
+    def test_keeps_confirmed_player_not_in_csv(self):
+        out, rep = plan(parse("12球団|オリックス|ペルドモ:リリーフ投手"), {})
+        self.assertEqual(export(out, ""), "12球団|オリックス|ペルドモ:リリーフ投手\n")
+        self.assertEqual(rep, {})
+
     def test_keeps_player_moved_to_ikusei_after_cutoff(self):
         players = roster_at([csv_row("1", "育成 一郎", team="阪神タイガース", num="130", mv="育成選手登録", d="20260827")], CUT)
         out, rep = plan(parse("12球団|巨人|育成一郎:投手"), players)
