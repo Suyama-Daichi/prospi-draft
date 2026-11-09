@@ -219,7 +219,7 @@ footer.foot a { color: inherit; }
       <div class="share" id="share" hidden>
         <img id="share-img" alt="マイチームの編成画像">
         <div class="team-actions">
-          <button type="button" id="save-img" hidden>画像を保存</button>
+          <button type="button" id="save-img">画像を保存</button>
           <button type="button" id="share-close">閉じる</button>
         </div>
         <p id="share-hint">保存できないときは、画像を長押し（PCは右クリック）して保存してください。</p>
@@ -244,7 +244,6 @@ footer.foot a { color: inherit; }
 
 <script>
 const CATS = ["12球団", "WBC2026代表", "歴代日本代表", "OB（監督・コーチ）", "WORLD STAR"];
-const CAT_LABEL = ["12球団", "WBC2026代表", "歴代日本代表", "OB（監督・コーチ）", "WORLD STAR"];
 const CAT_VAR = ["--c-npb", "--c-wbc", "--c-jpn", "--c-ob", "--c-ws"];
 const RAW = /*DATA*/[];
 // 選手IDはデータの並び順なので、データが変わったら古い保存を読まないよう保存キーにデータのハッシュを含める
@@ -378,10 +377,10 @@ function renderFilters() {
   const seen = new Set(state.seen);
   const mine = teamPlayers();
   const box = $("filters");
-  box.replaceChildren(...CATS.map((_, c) => {
+  box.replaceChildren(...CATS.map((label, c) => {
     const left = players.filter(pl => pl.c === c && !seen.has(pl.id) && !mine.some(m => samePerson(m, pl))).length;
     const input = el("input", { type: "checkbox", id: "f" + c, checked: state.filters[c], onchange: e => { state.filters[c] = e.target.checked; save(); render(); } });
-    return el("label", { class: "chip", for: "f" + c, style: catStyle(c) }, input, CAT_LABEL[c], el("span", { class: "n" }, String(left)));
+    return el("label", { class: "chip", for: "f" + c, style: catStyle(c) }, input, label, el("span", { class: "n" }, String(left)));
   }));
 }
 
@@ -719,32 +718,19 @@ async function makeImage() {
   x.fillText(state.rounds.length + "巡 ・ パス" + passes + "回 ・ データ：プロスピ2026 {{DATA_VER}}", P, H - 40);
   return cv;
 }
-let lastBlob = null;
 async function showShare() {
   const btn = $("share-btn");
   btn.disabled = true;
   try {
     const cv = await makeImage();
-    const url = cv.toDataURL("image/png");
-    $("share-img").src = url;
-    lastBlob = await new Promise(res => cv.toBlob(res, "image/png"));
+    $("share-img").src = cv.toDataURL("image/png");
     $("share").hidden = false;
     $("share").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" });
   } finally { btn.disabled = false; }
 }
 function hideShare() { $("share").hidden = true; }
-let downloads = null;
-async function saveImage() {
-  if (!downloads || !lastBlob) return;
-  const btn = $("save-img");
-  try {
-    await downloads.save({ filename: "prospi2026-random-draft.png", data: lastBlob });
-    btn.textContent = "保存しました";
-  } catch (e) {
-    btn.textContent = e && e.code === "declined" ? "保存をキャンセルしました" : "保存できませんでした";
-    if (e && (e.code === "unavailable" || e.code === "not_granted" || e.code === "capability_disabled" || e.code === "capability_removed")) btn.hidden = true;
-  }
-  setTimeout(() => { btn.textContent = "画像を保存"; }, 2000);
+function saveImage() {
+  el("a", { href: $("share-img").src, download: "prospi2026-random-draft.png" }).click();
 }
 
 // ---------- wire ----------
@@ -760,14 +746,6 @@ $("save-img").addEventListener("click", saveImage);
 $("slot-select").addEventListener("change", e => { if (e.target.value) { targetSlot = e.target.value; setStatus(""); render(); } });
 $("def-select").addEventListener("change", e => { if (state.current) { state.current.def = e.target.value; state.current.defSlot = targetSlot; setStatus(""); save(); render(); } });
 render();
-(async () => {
-  try {
-    if (window.claude && typeof window.claude.use === "function") {
-      downloads = await window.claude.use("downloads");
-      if (downloads) $("save-img").hidden = false;
-    }
-  } catch (e) { downloads = null; }
-})();
 </script>
 </body>
 </html>
