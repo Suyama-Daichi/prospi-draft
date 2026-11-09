@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プロスピ2026 ランダムドラフト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: scorebook page. Left = ルーレット (draw), right = マイチーム lineup card, history below. */
+  --paper: #f3f5f1;
+  --card: #ffffff;
+  --ink: #1b2742;
+  --muted: #5c6880;
+  --rule: #c3cedd;
+  --accent: #c8322b;
+  --accent-ink: #ffffff;
+  --sel: #fbe9e6;
+  --c-npb: #24447a;
+  --c-wbc: #c8322b;
+  --c-jpn: #6b3fa0;
+  --c-ob: #8a5a2b;
+  --c-ws: #b8860b;
+  --font-display: "Dela Gothic One", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111a2b; --card: #18233a; --ink: #e7ecf4; --muted: #9aa7bf; --rule: #2d3b57;
+    --accent: #ff6b5e; --accent-ink: #1a0c0a; --sel: #3a2328;
+    --c-npb: #7fa6e8; --c-wbc: #ff7b6e; --c-jpn: #b993ea; --c-ob: #d6a26c; --c-ws: #e6bd52;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111a2b; --card: #18233a; --ink: #e7ecf4; --muted: #9aa7bf; --rule: #2d3b57;
+  --accent: #ff6b5e; --accent-ink: #1a0c0a; --sel: #3a2328;
+  --c-npb: #7fa6e8; --c-wbc: #ff7b6e; --c-jpn: #b993ea; --c-ob: #d6a26c; --c-ws: #e6bd52;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--paper);
+  background-image: linear-gradient(var(--rule) 1px, transparent 1px);
+  background-size: 100% 28px;
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 20px; border-bottom: 3px double var(--ink); padding-bottom: 10px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(24px, 4vw, 34px); margin: 0; letter-spacing: .02em; text-wrap: balance; }
+h1 small { display: block; font-family: var(--font-body); font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .12em; }
+.lede { margin: 0; color: var(--muted); font-size: 13px; max-width: 60ch; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 20px; margin: 0; }
+.grid { display: grid; gap: 20px; grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 960px) { .grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
+.panel { background: var(--card); border: 1.5px solid var(--ink); border-radius: 6px; padding: 16px; display: grid; gap: 14px; box-shadow: 3px 3px 0 var(--rule); }
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* filters */
+fieldset { border: 1px dashed var(--rule); border-radius: 6px; margin: 0; padding: 10px 12px 12px; }
+legend { font-size: 12px; font-weight: 700; color: var(--muted); padding: 0 4px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--cat, var(--ink)); border-radius: 999px; padding: 4px 10px 4px 8px; font-size: 13px; font-weight: 700; cursor: pointer; user-select: none; }
+.chip input { accent-color: var(--cat); margin: 0; }
+.chip .n { font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip:has(input:not(:checked)) { opacity: .5; border-style: dashed; }
+.chip:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.size-pick { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.size-pick select { padding: 8px 6px; }
+button { font: inherit; cursor: pointer; border-radius: 6px; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); padding: 8px 14px; font-weight: 700; }
+button:hover:not(:disabled) { background: var(--sel); }
+button:focus-visible, select:focus-visible, .cand:focus-visible, .slot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-size: 16px; padding: 10px 20px; }
+button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+.pass-dots { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
+.pass-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; display: inline-block; }
+.pass-dots i.on { background: currentColor; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.5em; margin: 0; }
+.status.warn { color: var(--accent); font-weight: 700; }
+
+/* candidates */
+.cands { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.cand { position: relative; text-align: left; border: 1.5px solid var(--rule); border-left: 6px solid var(--cat); border-radius: 6px; background: var(--card); padding: 8px 10px 9px; display: grid; gap: 2px; font-weight: 400; min-height: 86px; align-content: start; }
+.cand .no { position: absolute; top: 6px; right: 8px; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cand .nm { font-weight: 900; font-size: 16px; line-height: 1.3; padding-right: 18px; overflow-wrap: anywhere; }
+.cand .tm { font-size: 12px; font-weight: 700; color: var(--cat); }
+.cand .ps { font-size: 12px; color: var(--muted); }
+.cand[aria-pressed="true"] { border-color: var(--accent); background: var(--sel); box-shadow: inset 0 0 0 1px var(--accent); }
+.cand.ghost { opacity: .55; }
+/* ルーレット：各カードがリールになって回り、左から順に止まる */
+.cand.reel { overflow: hidden; opacity: 1; border-color: var(--ink); background: repeating-linear-gradient(180deg, var(--card) 0 14px, var(--sel) 14px 15px); }
+.cand.reel .nm, .cand.reel .tm, .cand.reel .ps { animation: reel-roll .11s linear infinite; }
+@keyframes reel-roll { from { transform: translateY(-55%); opacity: .25; filter: blur(1.2px); } to { transform: translateY(55%); opacity: .85; filter: blur(0); } }
+.cand.landed { animation: reel-land .38s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes reel-land { 0% { transform: translateY(-8px); box-shadow: 0 0 0 3px var(--accent); } 100% { transform: none; box-shadow: 0 0 0 0 transparent; } }
+.cands.spinning { position: relative; }
+.cand.reel:disabled, .cand.landed:disabled { opacity: 1; cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .cand.reel .nm, .cand.reel .tm, .cand.reel .ps, .cand.landed { animation: none; } }
+.cands.empty { display: block; border: 1.5px dashed var(--rule); border-radius: 6px; padding: 22px 14px; text-align: center; color: var(--muted); font-size: 14px; }
+.assign { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; align-items: end; border-top: 1px dashed var(--rule); padding-top: 12px; }
+.assign label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--muted); }
+select { font: inherit; font-weight: 700; color: var(--ink); background: var(--card); border: 1.5px solid var(--ink); border-radius: 6px; padding: 7px 8px; }
+select:disabled { opacity: .5; }
+.assign .actions { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; }
+.picked { grid-column: 1 / -1; font-size: 13px; margin: 0; }
+.picked b { font-size: 15px; }
+
+/* team */
+.progress { height: 8px; border-radius: 99px; background: var(--rule); overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; }
+#team { display: grid; gap: 6px; }
+.group-title { font-size: 12px; font-weight: 900; letter-spacing: .14em; color: var(--muted); margin: 6px 0 0; }
+.slots { display: grid; gap: 0; border: 1.5px solid var(--ink); border-radius: 4px; overflow: hidden; }
+.slot { display: grid; grid-template-columns: 58px 30px minmax(0, 1fr); align-items: center; gap: 0 10px; padding: 6px 10px; border: 0; border-bottom: 1px solid var(--rule); background: var(--card); text-align: left; border-radius: 0; font-weight: 400; min-height: 44px; }
+.slot:last-child { border-bottom: 0; }
+.slot .lb { font-weight: 900; font-size: 13px; font-variant-numeric: tabular-nums; }
+.slot .df { display: inline-grid; place-items: center; width: 28px; height: 28px; border: 1.5px solid var(--ink); border-radius: 50%; font-weight: 900; font-size: 13px; }
+.slot .who { display: grid; min-width: 0; }
+.slot .who .nm { font-weight: 900; overflow-wrap: anywhere; }
+.slot .who .sub { font-size: 12px; color: var(--muted); }
+.slot .who .sub b { color: var(--cat); font-weight: 700; }
+.slot.empty .who { color: var(--muted); font-size: 13px; }
+.slot.empty .df { border-style: dashed; color: var(--muted); border-color: var(--muted); }
+.slot.target { background: var(--sel); box-shadow: inset 4px 0 0 var(--accent); }
+.slot:disabled { opacity: 1; cursor: default; }
+.complete { margin: 0; padding: 10px 12px; border: 2px solid var(--accent); border-radius: 6px; color: var(--accent); font-weight: 900; text-align: center; }
+.team-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.share { display: grid; gap: 10px; border-top: 1px dashed var(--rule); padding-top: 12px; }
+.share img { width: 100%; max-width: 420px; border: 1px solid var(--rule); border-radius: 4px; justify-self: center; }
+.share p { margin: 0; font-size: 12px; color: var(--muted); }
+
+/* history */
+.history { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.history li { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 14px; }
+.history li:last-child { border-bottom: 0; }
+.history .rd { font-weight: 900; font-variant-numeric: tabular-nums; color: var(--muted); }
+.history .res b { font-weight: 900; }
+.history .res .pass { color: var(--accent); font-weight: 900; }
+.history .pool { display: block; font-size: 12px; color: var(--muted); }
+.history-empty { color: var(--muted); font-size: 13px; margin: 0; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 420px) {
+  .assign { grid-template-columns: 1fr; }
+  .slot { grid-template-columns: 50px 30px minmax(0, 1fr); gap: 0 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .progress > span { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><small>PRO SPIRITS 2026 · RANDOM DRAFT</small>プロスピ2026 ランダムドラフト</h1>
+    <p class="lede">収録選手からランダムに出る候補（人数は1〜20人から選べます）のうち1人を指名して、17人のマイチームを作ります。ルーレット1回で選べるのは1人。パスは3回まで。</p>
+  </header>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="draw-h">
+      <div class="panel-head">
+        <h2 id="draw-h">ルーレット</h2>
+        <span class="meta" id="round-meta"></span>
+      </div>
+      <fieldset>
+        <legend>ルーレットに出す選手（残り人数）</legend>
+        <div class="filters" id="filters"></div>
+      </fieldset>
+      <div class="controls">
+        <label class="size-pick" for="draw-size">候補の人数<select id="draw-size"></select></label>
+        <button type="button" class="primary" id="spin">ルーレットを回す</button>
+        <button type="button" id="pass">パス<span class="pass-dots" id="pass-dots" aria-hidden="true"></span><span class="sr" id="pass-sr"></span></button>
+      </div>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <div id="cands" class="cands empty">「ルーレットを回す」を押すと、候補の7人がここに出ます。</div>
+      <div class="assign" id="assign" hidden>
+        <p class="picked" id="picked"></p>
+        <label for="slot-select">起用枠
+          <select id="slot-select"></select>
+        </label>
+        <label for="def-select">守備
+          <select id="def-select"></select>
+        </label>
+        <div class="actions">
+          <button type="button" class="primary" id="add">チームに追加</button>
+        </div>
+      </div>
+      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。スタメン9人の守備は重複できません。データは2026年11月9日時点（ゲームのVer2.3.0相当）。</p>
+    </section>
+
+    <section class="panel" aria-labelledby="team-h">
+      <div class="panel-head">
+        <h2 id="team-h">マイチーム</h2>
+        <span class="meta" id="team-count">0/17</span>
+      </div>
+      <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+      <div id="team"></div>
+      <p class="complete" id="complete" hidden>17人そろいました。チーム完成！</p>
+      <div class="team-actions">
+        <button type="button" id="share-btn">画像でシェア</button>
+        <button type="button" id="copy-btn">テキストでコピー</button>
+        <button type="button" id="reset">リセット</button>
+      </div>
+      <div class="share" id="share" hidden>
+        <img id="share-img" alt="マイチームの編成画像">
+        <div class="team-actions">
+          <button type="button" id="save-img" hidden>画像を保存</button>
+          <button type="button" id="share-close">閉じる</button>
+        </div>
+        <p id="share-hint">保存できないときは、画像を長押し（PCは右クリック）して保存してください。</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="hist-h">
+    <div class="panel-head">
+      <h2 id="hist-h">スピン履歴</h2>
+      <span class="meta" id="hist-meta"></span>
+    </div>
+    <ol class="history" id="history" reversed></ol>
+    <p class="history-empty" id="history-empty">まだルーレットを回していません。</p>
+  </section>
+</div>
+
+<script>
+const CATS = ["12球団", "WBC2026代表", "歴代日本代表", "OB（監督・コーチ）", "WORLD STAR"];
+const CAT_LABEL = ["12球団", "WBC2026代表", "歴代日本代表", "OB（監督・コーチ）", "WORLD STAR"];
+const CAT_VAR = ["--c-npb", "--c-wbc", "--c-jpn", "--c-ob", "--c-ws"];
+const RAW = /*DATA*/[];
+const STORE_KEY = "prospi2026-random-draft-v1";
+const PASS_MAX = 3;
+const DRAW_DEFAULT = 7;
+const DRAW_MIN = 1, DRAW_MAX = 20;
+const drawSize = () => state.drawSize;
+
+const SLOTS = [
+  ...Array.from({ length: 9 }, (_, i) => ({ id: "b" + (i + 1), label: (i + 1) + "番", group: "スタメン", kind: "bat" })),
+  { id: "r1", label: "控え①", group: "控え野手", kind: "bench" },
+  { id: "r2", label: "控え②", group: "控え野手", kind: "bench" },
+  { id: "s1", label: "先発①", group: "投手陣", kind: "sp" },
+  { id: "s2", label: "先発②", group: "投手陣", kind: "sp" },
+  { id: "s3", label: "先発③", group: "投手陣", kind: "sp" },
+  { id: "m1", label: "中継ぎ①", group: "投手陣", kind: "rp" },
+  { id: "m2", label: "中継ぎ②", group: "投手陣", kind: "rp" },
+  { id: "c", label: "抑え", group: "投手陣", kind: "cl" },
+];
+const SLOT_BY_ID = Object.fromEntries(SLOTS.map(s => [s.id, s]));
+const DEFS = ["―", "投", "捕", "一", "二", "三", "遊", "左", "中", "右", "指"];
+const POS_DEF = { "先発投手": "投", "リリーフ投手": "投", "投手": "投", "捕手": "捕", "一塁手": "一", "二塁手": "二", "三塁手": "三", "遊撃手": "遊", "左翼手": "左", "中堅手": "中", "右翼手": "右" };
+
+const players = RAW.map((r, i) => ({ id: i, c: r[0], t: r[1], n: r[2], p: r[3], key: r[2].replace(/[\s　]/g, "") }));
+
+function teamLabel(pl) {
+  switch (pl.c) {
+    case 0: return pl.t;
+    case 1: return "WBC " + pl.t;
+    case 2: return pl.t === "FREE" ? "FREE（歴代日本代表）" : pl.t;
+    case 3: return pl.t === "FREE" ? "FREE（OB）" : pl.t + " OB";
+    default: return "WORLD STAR";
+  }
+}
+function posLabel(pl) { return pl.p || "—"; }
+// 同姓同名でも、同じ12球団同士・同じWBC同士は別人（例：ソフトバンクと中日のロドリゲス）。それ以外の区分をまたぐ同名は同一人物とみなす。
+function samePerson(a, b) {
+  if (a.key !== b.key) return false;
+  if (a.c === b.c && (a.c === 0 || a.c === 1)) return a.id === b.id;
+  return true;
+}
+function slotDefault(pl) {
+  const empty = SLOTS.filter(s => !state.team[s.id]);
+  if (!empty.length) return null;
+  const order = {
+    "先発投手": ["sp", "rp", "cl"], "リリーフ投手": ["rp", "cl", "sp"], "投手": ["sp", "rp", "cl"],
+  }[pl.p] || ["bat", "bench"];
+  for (const kind of order) { const s = empty.find(x => x.kind === kind); if (s) return s.id; }
+  return null;
+}
+function defFor(slotId, pl) {
+  const k = SLOT_BY_ID[slotId].kind;
+  if (k === "sp" || k === "rp" || k === "cl") return "投";
+  if (k === "bench") return "―";
+  const d = POS_DEF[pl.p];
+  return d && !usedDefs()[d] ? d : "";
+}
+// スタメン（1〜9番）で使用中の守備 → その選手
+function usedDefs() {
+  const used = {};
+  for (const s of SLOTS) {
+    const v = state.team[s.id];
+    if (s.kind === "bat" && v && v.def && v.def !== "―") used[v.def] = { slot: s, pl: players[v.pid] };
+  }
+  return used;
+}
+const BAT_DEFS = DEFS.filter(d => d !== "―");
+
+// ---------- state ----------
+function freshState() {
+  return { team: {}, seen: [], passes: PASS_MAX, rounds: [], current: null, filters: [true, true, true, true, true], drawSize: DRAW_DEFAULT };
+}
+let state = load();
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (s && s.team && Array.isArray(s.seen) && Array.isArray(s.rounds) && Array.isArray(s.filters)) {
+      const ok = id => Number.isInteger(id) && id >= 0 && id < players.length;
+      if (Object.values(s.team).every(v => v && ok(v.pid)) && s.seen.every(ok)) {
+        if (!Number.isInteger(s.drawSize) || s.drawSize < DRAW_MIN || s.drawSize > DRAW_MAX) s.drawSize = DRAW_DEFAULT;
+        return s;
+      }
+    }
+  } catch (e) {}
+  return freshState();
+}
+function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+const teamPlayers = () => Object.values(state.team).map(v => players[v.pid]);
+const filledCount = () => Object.keys(state.team).length;
+const isFull = () => filledCount() >= SLOTS.length;
+
+function eligible() {
+  const seen = new Set(state.seen);
+  const mine = teamPlayers();
+  return players.filter(pl => state.filters[pl.c] && !seen.has(pl.id) && !mine.some(m => samePerson(m, pl)));
+}
+function drawCandidates() {
+  const pool = eligible();
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const out = [];
+  for (const pl of pool) {
+    if (out.length >= drawSize()) break;
+    if (!out.some(o => samePerson(o, pl))) out.push(pl);
+  }
+  return out;
+}
+
+// ---------- DOM ----------
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") e.className = v; else if (k === "style") e.setAttribute("style", v);
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const k of kids) if (k != null) e.append(k);
+  return e;
+};
+const catStyle = c => "--cat: var(" + CAT_VAR[c] + ")";
+let targetSlot = null;
+let animating = false;
+let statusMsg = { text: "", warn: false };
+function setStatus(text, warn = false) { statusMsg = { text, warn }; }
+
+function renderFilters() {
+  const seen = new Set(state.seen);
+  const mine = teamPlayers();
+  const box = $("filters");
+  box.replaceChildren(...CATS.map((_, c) => {
+    const left = players.filter(pl => pl.c === c && !seen.has(pl.id) && !mine.some(m => samePerson(m, pl))).length;
+    const input = el("input", { type: "checkbox", id: "f" + c, checked: state.filters[c], onchange: e => { state.filters[c] = e.target.checked; save(); render(); } });
+    return el("label", { class: "chip", for: "f" + c, style: catStyle(c) }, input, CAT_LABEL[c], el("span", { class: "n" }, String(left)));
+  }));
+}
+
+function renderControls() {
+  const cur = state.current;
+  const pool = eligible().length;
+  const anyFilter = state.filters.some(Boolean);
+  $("spin").textContent = "ルーレットを回す";
+  const dsz = $("draw-size");
+  if (!dsz.options.length) dsz.replaceChildren(...Array.from({ length: DRAW_MAX - DRAW_MIN + 1 }, (_, i) => el("option", { value: String(DRAW_MIN + i) }, (DRAW_MIN + i) + "人")));
+  dsz.value = String(drawSize());
+  dsz.disabled = animating;
+  $("spin").disabled = animating || !!cur || isFull() || !anyFilter || pool === 0;
+  $("pass").disabled = animating || !cur || state.passes <= 0;
+  $("pass-dots").replaceChildren(...Array.from({ length: PASS_MAX }, (_, i) => el("i", { class: i < state.passes ? "on" : "" })));
+  $("pass-sr").textContent = "（残り" + state.passes + "回）";
+  $("round-meta").textContent = "第" + (state.rounds.length + (cur ? 1 : 0)) + "巡 ・ 出る可能性のある選手 " + pool + "人";
+  let msg = statusMsg.text, warn = statusMsg.warn;
+  if (animating) { msg = "ルーレット回転中…"; warn = false; }
+  else if (!msg) {
+    if (isFull()) msg = "チームが完成しました。画像やテキストでシェアできます。";
+    else if (!anyFilter) { msg = "ルーレットに出す選手の区分を1つ以上選んでください。"; warn = true; }
+    else if (pool === 0) { msg = "条件に合う選手が残っていません。ルーレットに出す区分を増やしてください。"; warn = true; }
+    else if (cur && cur.sel == null) msg = state.passes > 0 ? "候補から1人選んでください。選ばない場合はパスできます。" : "パスは使い切りました。候補から1人選んでください。";
+    else if (!cur) msg = "「ルーレットを回す」で候補を" + drawSize() + "人出しましょう。";
+    else if (cur && cur.sel != null && !targetSlot) msg = "起用枠を選んでください。使用中の枠には入れられません。";
+    else if (cur && cur.sel != null && targetSlot && SLOT_BY_ID[targetSlot].kind === "bat" && !cur.def) msg = "守備を選んでください。スタメンの守備は重複できません。";
+  }
+  const st = $("status");
+  st.textContent = msg || "";
+  st.className = "status" + (warn ? " warn" : "");
+}
+
+function candCard(pl, i, pressed, ghost) {
+  return el("button", {
+    type: "button", class: "cand" + (ghost ? " ghost" : ""), style: catStyle(pl.c),
+    "aria-pressed": pressed ? "true" : "false", disabled: ghost,
+    onclick: () => selectCand(pl.id),
+  },
+    el("span", { class: "no" }, String(i + 1)),
+    el("span", { class: "nm" }, pl.n),
+    el("span", { class: "tm" }, teamLabel(pl)),
+    el("span", { class: "ps" }, posLabel(pl)));
+}
+
+function renderCands() {
+  const box = $("cands");
+  const cur = state.current;
+  if (!cur || animating) {
+    if (!animating) {
+      box.className = "cands empty";
+      box.textContent = isFull() ? "17人そろいました。" : "「ルーレットを回す」を押すと、候補の" + drawSize() + "人がここに出ます。";
+    }
+    $("assign").hidden = true;
+    return;
+  }
+  box.className = "cands";
+  box.replaceChildren(...cur.cands.map((pid, i) => candCard(players[pid], i, cur.sel === pid, false)));
+  const assign = $("assign");
+  if (cur.sel == null) { assign.hidden = true; return; }
+  assign.hidden = false;
+  const pl = players[cur.sel];
+  $("picked").replaceChildren("指名：", el("b", {}, pl.n), "（" + teamLabel(pl) + "・" + posLabel(pl) + "）");
+  const ss = $("slot-select");
+  if (!targetSlot || state.team[targetSlot]) targetSlot = slotDefault(pl);
+  ss.replaceChildren(
+    el("option", { value: "", disabled: true, selected: !targetSlot }, "起用枠を選択"),
+    ...["スタメン", "控え野手", "投手陣"].map(g => {
+      const og = el("optgroup", { label: g });
+      for (const s of SLOTS.filter(x => x.group === g)) {
+        const v = state.team[s.id];
+        og.append(el("option", { value: s.id, disabled: !!v, selected: s.id === targetSlot }, v ? s.label + "（使用中：" + players[v.pid].n + "）" : s.label));
+      }
+      return og;
+    }));
+  ss.value = targetSlot || "";
+  const ds = $("def-select");
+  if (!targetSlot) {
+    ds.replaceChildren(el("option", { value: "", selected: true }, "先に起用枠を選択"));
+    ds.disabled = true;
+    $("add").disabled = true;
+    return;
+  }
+  const kind = SLOT_BY_ID[targetSlot].kind;
+  const fixed = kind !== "bat";
+  const used = usedDefs();
+  if (cur.def == null || cur.defSlot !== targetSlot || (!fixed && used[cur.def])) { cur.def = defFor(targetSlot, pl); cur.defSlot = targetSlot; }
+  if (fixed) {
+    ds.replaceChildren(el("option", { value: cur.def, selected: true }, cur.def));
+  } else {
+    ds.replaceChildren(
+      el("option", { value: "", disabled: true, selected: !cur.def }, "守備を選択"),
+      ...BAT_DEFS.map(d => {
+        const u = used[d];
+        return el("option", { value: d, disabled: !!u, selected: d === cur.def }, u ? d + "（使用中：" + u.slot.label + " " + u.pl.n + "）" : d);
+      }));
+  }
+  ds.disabled = fixed;
+  ds.value = cur.def;
+  $("add").disabled = !fixed && (!cur.def || !!used[cur.def]);
+}
+
+function renderTeam() {
+  const box = $("team");
+  const groups = ["スタメン", "控え野手", "投手陣"];
+  const canTarget = !!(state.current && state.current.sel != null);
+  box.replaceChildren(...groups.flatMap(g => {
+    const list = el("div", { class: "slots" });
+    for (const s of SLOTS.filter(x => x.group === g)) {
+      const v = state.team[s.id];
+      const pl = v ? players[v.pid] : null;
+      const isTarget = canTarget && targetSlot === s.id;
+      const def = v ? v.def : (s.kind === "bat" || s.kind === "bench" ? "―" : "投");
+      const who = pl
+        ? el("span", { class: "who" }, el("span", { class: "nm" }, pl.n), el("span", { class: "sub", style: catStyle(pl.c) }, el("b", {}, teamLabel(pl)), " ・ " + posLabel(pl)))
+        : el("span", { class: "who" }, canTarget ? "空き（タップでこの枠に起用）" : "空き");
+      list.append(el("button", {
+        type: "button", class: "slot" + (pl ? "" : " empty") + (isTarget ? " target" : ""),
+        disabled: !!pl || !canTarget, "aria-label": s.label + (pl ? "：" + pl.n : "：空き"),
+        onclick: () => { targetSlot = s.id; render(); },
+      }, el("span", { class: "lb" }, s.label), el("span", { class: "df" }, def), who));
+    }
+    return [el("p", { class: "group-title" }, g), list];
+  }));
+  const n = filledCount();
+  $("team-count").textContent = n + "/" + SLOTS.length;
+  $("progress-bar").style.width = (n / SLOTS.length * 100) + "%";
+  $("complete").hidden = !isFull();
+}
+
+function renderHistory() {
+  const ol = $("history");
+  ol.replaceChildren(...state.rounds.slice().reverse().map(r => {
+    const names = r.cands.map(pid => players[pid].n).join("・");
+    let res;
+    if (r.type === "pass") res = el("span", { class: "pass" }, "パス");
+    else {
+      const pl = players[r.pid];
+      res = el("span", {}, el("b", {}, pl.n), "（" + teamLabel(pl) + "）→ " + SLOT_BY_ID[r.slot].label + (r.def && r.def !== "―" ? "・" + r.def : ""));
+    }
+    return el("li", {}, el("span", { class: "rd" }, "第" + r.no + "巡"), el("span", { class: "res" }, res, el("span", { class: "pool" }, "候補：" + names)));
+  }));
+  $("history-empty").hidden = state.rounds.length > 0;
+  const passes = state.rounds.filter(r => r.type === "pass").length;
+  $("hist-meta").textContent = state.rounds.length ? state.rounds.length + "巡 ・ パス" + passes + "回" : "";
+}
+
+function render() {
+  renderFilters();
+  renderCands();
+  renderTeam();
+  renderHistory();
+  renderControls();
+}
+
+// ---------- actions ----------
+const reduceMotion = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function spin() {
+  if (state.current || isFull() || animating) return;
+  const picks = drawCandidates();
+  if (!picks.length) { render(); return; }
+  setStatus("");
+  state.seen.push(...picks.map(p => p.id));
+  state.current = { cands: picks.map(p => p.id), sel: null };
+  targetSlot = null;
+  save();
+  if (reduceMotion()) { render(); return; }
+  animating = true;
+  renderControls();
+  const box = $("cands");
+  box.className = "cands spinning";
+  const pool = eligible();
+  const filler = pool.length ? pool : players;
+  const cards = picks.map((pl, i) => { const c = candCard(pl, i, false, true); c.className = "cand reel"; return c; });
+  box.replaceChildren(...cards);
+  // 回り始めて約0.7秒後から、左のカードから順に止まる（人数が多いときは間隔を詰める）
+  const gap = Math.min(170, 1300 / picks.length);
+  const stopAt = picks.map((_, i) => 700 + i * gap);
+  const stopped = picks.map(() => false);
+  const show = (card, pl) => {
+    card.setAttribute("style", catStyle(pl.c));
+    card.querySelector(".nm").textContent = pl.n;
+    card.querySelector(".tm").textContent = teamLabel(pl);
+    card.querySelector(".ps").textContent = posLabel(pl);
+  };
+  const t0 = performance.now();
+  const tick = () => {
+    const t = performance.now() - t0;
+    picks.forEach((pl, i) => {
+      if (stopped[i]) return;
+      if (t >= stopAt[i]) {
+        stopped[i] = true;
+        show(cards[i], pl);
+        cards[i].className = "cand landed";
+      } else {
+        show(cards[i], filler[Math.floor(Math.random() * filler.length)]);
+      }
+    });
+    if (stopped.every(Boolean)) { setTimeout(() => { animating = false; render(); }, 380); return; }
+    setTimeout(tick, 55);
+  };
+  tick();
+}
+function selectCand(pid) {
+  if (!state.current) return;
+  state.current.sel = pid;
+  state.current.def = null;
+  targetSlot = slotDefault(players[pid]);
+  setStatus("");
+  save();
+  render();
+}
+function addToTeam() {
+  const cur = state.current;
+  if (!cur || cur.sel == null) return;
+  if (!targetSlot || state.team[targetSlot]) { setStatus("起用枠を選んでください。使用中の枠には入れられません。", true); targetSlot = null; render(); return; }
+  const pl = players[cur.sel];
+  const isBat = SLOT_BY_ID[targetSlot].kind === "bat";
+  const def = isBat ? cur.def : defFor(targetSlot, pl);
+  if (isBat && (!def || usedDefs()[def])) { setStatus("守備を選んでください。スタメンの守備は重複できません。", true); render(); return; }
+  state.team[targetSlot] = { pid: pl.id, def };
+  state.rounds.push({ no: state.rounds.length + 1, cands: cur.cands, type: "add", pid: pl.id, slot: targetSlot, def });
+  setStatus(pl.n + "を" + SLOT_BY_ID[targetSlot].label + "に起用しました。");
+  state.current = null;
+  targetSlot = null;
+  hideShare();
+  save();
+  render();
+}
+function pass() {
+  const cur = state.current;
+  if (!cur || state.passes <= 0) return;
+  state.passes--;
+  state.rounds.push({ no: state.rounds.length + 1, cands: cur.cands, type: "pass" });
+  state.current = null;
+  targetSlot = null;
+  setStatus("パスしました（残り" + state.passes + "回）。");
+  save();
+  render();
+}
+let resetArmed = null;
+function reset() {
+  const btn = $("reset");
+  if (!resetArmed) {
+    btn.textContent = "もう一度押すとリセット";
+    resetArmed = setTimeout(() => { resetArmed = null; btn.textContent = "リセット"; }, 3000);
+    return;
+  }
+  clearTimeout(resetArmed); resetArmed = null; btn.textContent = "リセット";
+  const filters = state.filters, size = state.drawSize;
+  state = freshState();
+  state.filters = filters;
+  state.drawSize = size;
+  targetSlot = null;
+  setStatus("リセットしました。");
+  hideShare();
+  save();
+  render();
+}
+
+// ---------- share ----------
+function teamText() {
+  const lines = ["⚾ プロスピ2026 ランダムドラフト（" + filledCount() + "/17）"];
+  for (const g of ["スタメン", "控え野手", "投手陣"]) {
+    lines.push("", "【" + g + "】");
+    for (const s of SLOTS.filter(x => x.group === g)) {
+      const v = state.team[s.id];
+      if (!v) { lines.push(s.label + "　―"); continue; }
+      const pl = players[v.pid];
+      const d = s.kind === "bat" ? "（" + v.def + "）" : "";
+      lines.push(s.label + d + "　" + pl.n + "／" + teamLabel(pl) + "／" + posLabel(pl));
+    }
+  }
+  const passes = state.rounds.filter(r => r.type === "pass").length;
+  lines.push("", state.rounds.length + "巡・パス" + passes + "回");
+  return lines.join("\n");
+}
+async function copyText() {
+  const btn = $("copy-btn");
+  try {
+    await navigator.clipboard.writeText(teamText());
+    btn.textContent = "コピーしました";
+  } catch (e) {
+    btn.textContent = "コピーできませんでした";
+  }
+  setTimeout(() => { btn.textContent = "テキストでコピー"; }, 1800);
+}
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+async function makeImage() {
+  try { await document.fonts.load('900 30px "Zen Kaku Gothic New"'); await document.fonts.load('30px "Dela Gothic One"'); } catch (e) {}
+  const W = 1080, H = 1350, P = 64;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  const paper = "#f3f5f1", ink = "#1b2742", rule = "#c3cedd", accent = "#c8322b", muted = "#5c6880";
+  const catCol = ["#24447a", "#c8322b", "#6b3fa0", "#8a5a2b", "#b8860b"];
+  x.fillStyle = paper; x.fillRect(0, 0, W, H);
+  x.strokeStyle = rule; x.lineWidth = 1;
+  for (let y = 0; y < H; y += 28) { x.beginPath(); x.moveTo(0, y + .5); x.lineTo(W, y + .5); x.stroke(); }
+  const body = '"Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
+  x.fillStyle = accent; x.font = "700 22px " + body; x.fillText("PRO SPIRITS 2026 · RANDOM DRAFT", P, 84);
+  x.fillStyle = ink; x.font = '46px "Dela Gothic One", ' + body; x.fillText("マイチーム", P, 140);
+  x.font = "700 26px " + body; x.textAlign = "right"; x.fillText(filledCount() + " / 17", W - P, 140); x.textAlign = "left";
+  x.fillStyle = ink; x.fillRect(P, 160, W - P * 2, 4); x.fillRect(P, 168, W - P * 2, 1.5);
+  let y = 210;
+  const rowH = 54;
+  for (const g of ["スタメン", "控え野手", "投手陣"]) {
+    x.fillStyle = muted; x.font = "900 20px " + body; x.fillText(g, P, y); y += 14;
+    for (const s of SLOTS.filter(q => q.group === g)) {
+      const v = state.team[s.id];
+      const pl = v ? players[v.pid] : null;
+      x.fillStyle = "#ffffff"; x.fillRect(P, y, W - P * 2, rowH);
+      x.strokeStyle = rule; x.strokeRect(P + .5, y + .5, W - P * 2 - 1, rowH - 1);
+      if (pl) { x.fillStyle = catCol[pl.c]; x.fillRect(P, y, 6, rowH); }
+      x.fillStyle = ink; x.font = "900 22px " + body; x.fillText(s.label, P + 20, y + 35);
+      const def = v ? v.def : (s.kind === "bat" || s.kind === "bench" ? "―" : "投");
+      x.beginPath(); x.arc(P + 140, y + rowH / 2, 17, 0, Math.PI * 2); x.strokeStyle = pl ? ink : muted; x.lineWidth = 2; x.stroke(); x.lineWidth = 1;
+      x.fillStyle = pl ? ink : muted; x.font = "900 19px " + body; x.textAlign = "center"; x.fillText(def, P + 140, y + 34); x.textAlign = "left";
+      if (pl) {
+        x.fillStyle = ink; x.font = "900 26px " + body;
+        let nm = pl.n; while (x.measureText(nm).width > 420 && nm.length > 2) nm = nm.slice(0, -1);
+        x.fillText(nm === pl.n ? nm : nm + "…", P + 180, y + 36);
+        x.textAlign = "right"; x.font = "700 19px " + body; x.fillStyle = catCol[pl.c];
+        x.fillText(teamLabel(pl), W - P - 18, y + 25);
+        x.fillStyle = muted; x.font = "500 17px " + body; x.fillText(posLabel(pl), W - P - 18, y + 46); x.textAlign = "left";
+      } else {
+        x.fillStyle = muted; x.font = "500 20px " + body; x.fillText("空き", P + 180, y + 35);
+      }
+      y += rowH;
+    }
+    y += 34;
+  }
+  const passes = state.rounds.filter(r => r.type === "pass").length;
+  x.fillStyle = muted; x.font = "500 18px " + body;
+  x.fillText(state.rounds.length + "巡 ・ パス" + passes + "回 ・ データ：プロスピ2026 収録選手（2026年11月時点）", P, H - 40);
+  return cv;
+}
+let lastBlob = null;
+async function showShare() {
+  const btn = $("share-btn");
+  btn.disabled = true;
+  try {
+    const cv = await makeImage();
+    const url = cv.toDataURL("image/png");
+    $("share-img").src = url;
+    lastBlob = await new Promise(res => cv.toBlob(res, "image/png"));
+    $("share").hidden = false;
+    $("share").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" });
+  } finally { btn.disabled = false; }
+}
+function hideShare() { $("share").hidden = true; }
+let downloads = null;
+async function saveImage() {
+  if (!downloads || !lastBlob) return;
+  const btn = $("save-img");
+  try {
+    await downloads.save({ filename: "prospi2026-random-draft.png", data: lastBlob });
+    btn.textContent = "保存しました";
+  } catch (e) {
+    btn.textContent = e && e.code === "declined" ? "保存をキャンセルしました" : "保存できませんでした";
+    if (e && (e.code === "unavailable" || e.code === "not_granted" || e.code === "capability_disabled" || e.code === "capability_removed")) btn.hidden = true;
+  }
+  setTimeout(() => { btn.textContent = "画像を保存"; }, 2000);
+}
+
+// ---------- wire ----------
+$("spin").addEventListener("click", spin);
+$("draw-size").addEventListener("change", e => { const n = parseInt(e.target.value, 10); if (n >= DRAW_MIN && n <= DRAW_MAX) { state.drawSize = n; setStatus(state.current ? "次のルーレットから" + n + "人になります。" : ""); save(); render(); } });
+$("pass").addEventListener("click", pass);
+$("add").addEventListener("click", addToTeam);
+$("reset").addEventListener("click", reset);
+$("copy-btn").addEventListener("click", copyText);
+$("share-btn").addEventListener("click", showShare);
+$("share-close").addEventListener("click", hideShare);
+$("save-img").addEventListener("click", saveImage);
+$("slot-select").addEventListener("change", e => { if (e.target.value) { targetSlot = e.target.value; setStatus(""); render(); } });
+$("def-select").addEventListener("change", e => { if (state.current) { state.current.def = e.target.value; state.current.defSlot = targetSlot; setStatus(""); save(); render(); } });
+render();
+(async () => {
+  try {
+    if (window.claude && typeof window.claude.use === "function") {
+      downloads = await window.claude.use("downloads");
+      if (downloads) $("save-img").hidden = false;
+    }
+  } catch (e) { downloads = null; }
+})();
+</script>
+</body>
+</html>
