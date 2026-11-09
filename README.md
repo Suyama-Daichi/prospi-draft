@@ -30,6 +30,23 @@ python3 build.py .
 
 初版は Notion「プロスピ2026 収録選手リスト」（KONAMI公式サイト、NPB.jp、攻略サイト、Wikipediaを基に作成）から書き出した。以後の更新は `data.csv` が正本で、Notion は更新しない。
 
+## 公開（Cloudflare Pages）
+
+`index.html` だけを公開する。コード・`data.csv`・履歴は公開されず、リポジトリは非公開のままでよい。設定は [Cloudflare の公式手順](https://developers.cloudflare.com/pages/get-started/git-integration/)に沿う。
+
+1. Cloudflare ダッシュボードの Workers & Pages で、Create application → Pages → Connect to Git を選び、GitHub を連携してこのリポジトリを選ぶ。
+2. 「Set up builds and deployments」で次のとおりに指定して、Save and Deploy を押す。
+
+   | 項目 | 値 |
+   | --- | --- |
+   | Production branch | `main` |
+   | Build command | `mkdir -p dist && cp index.html dist/` |
+   | Build output directory | `dist` |
+
+3. `https://<プロジェクト名>.pages.dev` で公開される。以後、`main` へのマージのたびに自動で更新される。収録選手の同期の PR をマージすると、公開ページのデータも更新される。
+
+Production branch 以外のブランチには、プレビュー用の URL が作られる。Git 連携にすると、あとから Direct Upload には切り替えられない。
+
 ## 収録選手の同期
 
 GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を行う。
