@@ -1,0 +1,53 @@
+name: 収録選手の同期
+
+on:
+  schedule:
+    - cron: "0 0 * * 1" # 毎週月曜 9:00（日本時間）
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 反映済みのアップデートでも取り込む
+        type: boolean
+        default: false
+      dry_run:
+        description: 何も変更せず、変更案だけ表示する
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Notion を更新して data.txt を書き出す
+        shell: bash
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          FORCE: ${{ inputs.force && '--force' || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: python3 sync_roster.py $FORCE $DRY_RUN | tee "$RUNNER_TEMP/report.md"
+
+      - name: PR を作る
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 build.py .
+          if git diff --quiet; then echo "変更はありません"; exit 0; fi
+          ver=$(cut -d' ' -f1 data_version.txt)
+          branch="roster-sync/v$ver"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "$branch は作成済みです。開いている PR を確認してください"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "収録選手をVer${ver}に更新"
+          git push origin "$branch"
+          gh pr create --title "収録選手をVer${ver}に更新" --body-file "$RUNNER_TEMP/report.md"
