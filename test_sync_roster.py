@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from sync_roster import export, plan, roster_at
+from sync_roster import export, parse, plan, roster_at
 
 CUT = "20260731"
 
@@ -9,15 +9,6 @@ CUT = "20260731"
 def csv_row(pid, name, team="読売ジャイアンツ", num="10", mv="", d="", kind="4", pos="投手"):
     return {"person_id": pid, "player_name": name, "team_name": team, "player_jersey_number": num,
             "movement_name": mv, "announce_date": d, "staff_kind_id": kind, "roster_name": pos}
-
-
-def notion_row(name, team, npb="", cat="12球団", num="10", page=None):
-    return {"page": page or name, "name": name, "cat": cat, "team": team, "pos": "投手", "num": num, "npb": npb, "note": ""}
-
-
-def parse(text):
-    return [{"cat": k, "team": t, "name": it.rsplit(":", 1)[0], "pos": it.rsplit(":", 1)[1]}
-            for k, t, p in (line.split("|", 2) for line in text.splitlines()) for it in p.split(",")]
 
 
 class RosterAt(unittest.TestCase):
@@ -42,27 +33,32 @@ class Plan(unittest.TestCase):
     def test_changes(self):
         players = roster_at([
             csv_row("1", "移籍 太郎", team="阪神タイガース"),
-            csv_row("2", "紐付 次郎"),
+            csv_row("2", "残留 次郎"),
             csv_row("3", "新人 三郎", pos="捕手"),
             csv_row("4", "退団 四郎", mv="自由契約選手", d="20260701"),
             csv_row("5", "育成 五郎", num="130", mv="育成選手登録", d="20260827"),
+            csv_row("6", "マルティネス"),
         ], CUT)
-        rows = [
-            notion_row("移籍太郎", "巨人", npb="1"),
-            notion_row("紐付次郎", "巨人"),
-            notion_row("退団四郎", "巨人", npb="4"),
-            notion_row("不明六郎", "巨人"),
-            notion_row("FREE七郎", "FREE"),
-            notion_row("紐付次郎", "日本", cat="WBC2026代表", page="wbc"),
-        ]
-        creates, updates, trashes, rep = plan(rows, players, "Ver9.9.9")
-        self.assertEqual([c["選手名"] for c in creates], ["新人三郎"])
-        self.assertEqual(creates[0]["ポジション"], "捕手")
-        self.assertEqual(updates, {"移籍太郎": {"所属": "阪神", "背番号": "10", "備考": "Ver9.9.9で巨人から移籍"},
-                                   "紐付次郎": {"NPB ID": "2"}})
-        self.assertEqual(trashes, ["退団四郎"])
-        self.assertEqual(rep["要確認：名簿CSVの選手と紐付けられない（変更していません）"], ["不明六郎（巨人）"])
-        self.assertEqual(rep["要確認：締め日に支配下だったか分からない（変更していません）"], ["育成五郎（巨人）：育成選手登録 2026/08/27"])
+        old = ("12球団|巨人|移籍太郎:先発投手,残留次郎:捕手,退団四郎:投手,不明六郎:投手,R.マルティネス:リリーフ投手\n"
+               "12球団|FREE|退団四郎:投手\n"
+               "WBC2026代表|日本|残留次郎:\n")
+        out, rep = plan(parse(old), players)
+        self.assertEqual(export(out, old),
+                         "12球団|巨人|残留次郎:捕手,不明六郎:投手,R.マルティネス:リリーフ投手,新人三郎:捕手\n"
+                         "12球団|FREE|退団四郎:投手\n"
+                         "WBC2026代表|日本|残留次郎:\n"
+                         "12球団|阪神|移籍太郎:先発投手\n")
+        self.assertEqual(rep["移籍"], ["移籍太郎：巨人→阪神"])
+        self.assertEqual(rep["削除"], ["退団四郎（巨人）：自由契約選手 2026/07/01"])
+        self.assertEqual(rep["追加"], ["新人三郎（巨人・捕手）"])
+        self.assertEqual(rep["要確認：名簿CSVの選手と照合できない（変更していません）"], ["不明六郎（巨人）"])
+        self.assertEqual(len(rep), 4)  # 締め日の後に育成選手登録された選手（育成五郎）は追加も報告もしない
+
+    def test_keeps_player_moved_to_ikusei_after_cutoff(self):
+        players = roster_at([csv_row("1", "育成 一郎", team="阪神タイガース", num="130", mv="育成選手登録", d="20260827")], CUT)
+        out, rep = plan(parse("12球団|巨人|育成一郎:投手"), players)
+        self.assertEqual(export(out, ""), "12球団|巨人|育成一郎:投手\n")
+        self.assertEqual(rep, {})
 
 
 class Export(unittest.TestCase):

@@ -28,7 +28,7 @@ python3 build.py .
 
 ## データの出典
 
-Notion「プロスピ2026 収録選手リスト」（KONAMI公式サイト、NPB.jp、攻略サイト、Wikipediaを基に作成）。
+初版は Notion「プロスピ2026 収録選手リスト」（KONAMI公式サイト、NPB.jp、攻略サイト、Wikipediaを基に作成）から書き出した。以後の更新は `data.txt` が正本で、Notion は更新しない。
 
 ## 収録選手の同期
 
@@ -36,8 +36,8 @@ GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を�
 
 1. [KONAMI のアップデート一覧](https://www.konami.com/games/prospi/2026/jp/ja/update_list)から、「〇年〇月〇日時点の選手の収録」と書かれた最新のアップデートを探す。`data_version.txt` と同じバージョンなら何もしない。
 2. [armstjc/Nippon-Baseball-Data-Repository](https://github.com/armstjc/Nippon-Baseball-Data-Repository/releases/tag/rosters) の最新年の `YYYY_npb_rosters.csv` から、締め日の支配下選手を推定する。
-3. Notion の12球団の選手を「NPB ID」で照合して、追加・移籍・削除を反映する（12球団以外の区分と FREE の選手は変えない）。
-4. Notion から `data.txt` を書き出し、`index.html` を作り直して PR を作る。PR に変更内容と要確認の選手が載る。
+3. `data.txt` の12球団の選手を名前と所属で照合して、追加・移籍・削除を反映する（12球団以外の区分と FREE の選手は変えない）。CSV と表記が違う選手は `sync_roster.py` の `ALIASES` に書く。
+4. `index.html` を作り直して PR を作る。PR に変更内容と要確認の選手が載る。
 
 手動で動かすときは Actions の「収録選手の同期」から実行する（`dry_run` で変更案だけ確認できる）。
 
@@ -45,11 +45,10 @@ GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を�
 
 CSV には選手ごとに最新の公示が1件しか載らないため、締め日の状態は推定になる。
 
-- 締め日より後の「育成選手登録」は、支配下からの移行か新しい育成契約か区別できない。この場合は変更せず、PR の「要確認」に載せる。
+- 締め日より後の「育成選手登録」は、支配下からの移行か新しい育成契約か区別できない。この選手は `data.txt` にいれば残し、いなければ追加しない。
 - CSV から消えた選手（例：シーズン途中の退団）は、いつ抜けたか分からないので変更しない。
 - 締め日より後のトレードは、新しい所属で取り込まれてしまう。
 
 ### 必要な設定
 
-- Notion のインテグレーションを作り、「プロスピ2026 収録選手リスト」ページに接続する。トークンをリポジトリのシークレット `NOTION_TOKEN` に入れる。
-- リポジトリの Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする。
+リポジトリの Settings → Actions → General で「Allow GitHub Actions to create and approve pull requests」を有効にする。
