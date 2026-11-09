@@ -167,7 +167,7 @@ footer.foot a { color: inherit; }
 <body>
 <div class="wrap">
   <header class="top">
-    <h1><small>PRO SPIRITS 2026 · RANDOM DRAFT</small>プロスピ2026 ランダムドラフト</h1>
+    <h1><small>PROFESSIONAL BASEBALL SPIRITS 2026 · RANDOM DRAFT</small>プロスピ2026 ランダムドラフト</h1>
     <p class="lede">収録選手からランダムに出る候補（人数は1〜20人から選べます）のうち1人を指名して、17人のマイチームを作ります。ルーレット1回で選べるのは1人。パスは3回まで。</p>
   </header>
 
@@ -682,7 +682,7 @@ async function makeImage() {
   x.strokeStyle = rule; x.lineWidth = 1;
   for (let y = 0; y < H; y += 28) { x.beginPath(); x.moveTo(0, y + .5); x.lineTo(W, y + .5); x.stroke(); }
   const body = '"Zen Kaku Gothic New", "Hiragino Sans", sans-serif';
-  x.fillStyle = accent; x.font = "700 22px " + body; x.fillText("PRO SPIRITS 2026 · RANDOM DRAFT", P, 84);
+  x.fillStyle = accent; x.font = "700 22px " + body; x.fillText("PROFESSIONAL BASEBALL SPIRITS 2026 · RANDOM DRAFT", P, 84);
   x.fillStyle = ink; x.font = '46px "Dela Gothic One", ' + body; x.fillText("マイチーム", P, 140);
   x.font = "700 26px " + body; x.textAlign = "right"; x.fillText(filledCount() + " / 17", W - P, 140); x.textAlign = "left";
   x.fillStyle = ink; x.fillRect(P, 160, W - P * 2, 4); x.fillRect(P, 168, W - P * 2, 1.5);
