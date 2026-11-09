@@ -40,6 +40,19 @@ https://prospi-draft.d0nchan.com/ で公開している。`*.workers.dev` の ht
 
 `.assetsignore` で `index.html` 以外を配信しないようにしている。コード・`data.csv`・README・`.github` などは公開されない。ほかのファイルも公開したいときは、`.assetsignore` に `!ファイル名` を足す。
 
+## アクセス解析
+
+Google タグマネージャー（`GTM-WG75GG92`）経由で Google アナリティクス（GA4）を使う。GTM を読み込むのは `prospi-draft.d0nchan.com` と `prospi-draft.symdit.workers.dev` だけで、ブランチのプレビューとローカルでは計測しない。ページのフッターに、Google アナリティクスを使っていることを書いている。
+
+ページは次のカスタムイベントを `dataLayer` に送る。GA4 に送るには、GTM で「カスタム イベント」のトリガーと GA4 イベントのタグを作る。
+
+| イベント | タイミング |
+| --- | --- |
+| `spin` | ルーレットを回した |
+| `team_complete` | 17人そろった |
+| `share_image` | 「画像でシェア」で画像を作った |
+| `copy_text` | 「テキストでコピー」でコピーできた |
+
 ## 収録選手の同期
 
 GitHub Actions（`.github/workflows/roster-sync.yml`）が毎週月曜に次を行う。
