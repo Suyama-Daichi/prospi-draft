@@ -8,6 +8,13 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script>
+// 計測は本番だけ。ブランチのプレビュー（<ブランチ>-prospi-draft.symdit.workers.dev）とローカルでは GTM を読み込まない
+window.dataLayer = window.dataLayer || [];
+if (["prospi-draft.d0nchan.com", "prospi-draft.symdit.workers.dev"].includes(location.hostname)) {
+  (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WG75GG92');
+}
+</script>
 <style>
 :root {
   /* Layout: scorebook page. Left = ルーレット (draw), right = マイチーム lineup card, history below. */
@@ -238,6 +245,7 @@ footer.foot a { color: inherit; }
 
   <footer class="foot">
     <p class="note">非公式のファンツールです。KONAMI・NPB・各球団とは関係ありません。ゲーム名や選手名などの権利は、それぞれの権利者に帰属します。</p>
+    <p class="note">利用状況を知るため、Google アナリティクスを使っています。Google アナリティクスは Cookie を使って、個人を特定しない形でデータを集めます（<a href="https://policies.google.com/technologies/partner-sites?hl=ja" rel="noopener">Google によるデータの使用</a>）。</p>
     <p class="note">データの出典：<a href="https://www.konami.com/games/prospi/2026/jp/ja/" rel="noopener">KONAMI 公式サイト</a>、<a href="https://npb.jp/" rel="noopener">NPB.jp</a>、<a href="https://github.com/armstjc/Nippon-Baseball-Data-Repository" rel="noopener">armstjc/Nippon-Baseball-Data-Repository</a>、<a href="https://ja.wikipedia.org/wiki/%E3%83%97%E3%83%AD%E9%87%8E%E7%90%83%E3%82%B9%E3%83%94%E3%83%AA%E3%83%83%E3%83%842026" rel="noopener">Wikipedia「プロ野球スピリッツ2026」</a>、<a href="https://al-gest.com/prospi2026/" rel="noopener">al-gest</a>。</p>
   </footer>
 </div>
@@ -372,6 +380,8 @@ let targetSlot = null;
 let animating = false;
 let statusMsg = { text: "", warn: false };
 function setStatus(text, warn = false) { statusMsg = { text, warn }; }
+// GTM のカスタムイベント（GTM を読み込まないプレビューとローカルでは dataLayer に積まれるだけ）
+const track = event => window.dataLayer.push({ event });
 
 function renderFilters() {
   const seen = new Set(state.seen);
@@ -545,6 +555,7 @@ function spin() {
   setStatus("");
   state.seen.push(...picks.map(p => p.id));
   state.current = { cands: picks.map(p => p.id), sel: null };
+  track("spin");
   targetSlot = null;
   save();
   if (reduceMotion()) { render(); return; }
@@ -604,6 +615,7 @@ function addToTeam() {
   state.team[targetSlot] = { pid: pl.id, def };
   state.rounds.push({ no: state.rounds.length + 1, cands: cur.cands, type: "add", pid: pl.id, slot: targetSlot, def });
   setStatus(pl.n + "を" + SLOT_BY_ID[targetSlot].label + "に起用しました。");
+  if (isFull()) track("team_complete");
   state.current = null;
   targetSlot = null;
   hideShare();
@@ -662,6 +674,7 @@ async function copyText() {
   const btn = $("copy-btn");
   try {
     await navigator.clipboard.writeText(teamText());
+    track("copy_text");
     btn.textContent = "コピーしました";
   } catch (e) {
     btn.textContent = "コピーできませんでした";
@@ -726,6 +739,7 @@ async function showShare() {
     $("share-img").src = cv.toDataURL("image/png");
     $("share").hidden = false;
     $("share").scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" });
+    track("share_image");
   } finally { btn.disabled = false; }
 }
 function hideShare() { $("share").hidden = true; }
