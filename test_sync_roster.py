@@ -1,9 +1,15 @@
 import unittest
 from pathlib import Path
 
-from sync_roster import COLS, dump, parse, plan, roster_at
+from sync_roster import COLS, OB, TEAMS, WS, dump, parse, parse_ob, parse_world_star, plan, plan_wiki, roster_at
 
 CUT = "20260731"
+
+
+def wikitext(extra=""):
+    """12球団それぞれに「1軍監督」「コーチ」を1人ずつ置いた「監督・コーチ」の節。"""
+    body = "".join(f'|-\n| rowspan="2" |{full}||[[{short}の監督]]||1軍監督\n|-\n|[[{short}のコーチ]]||\n' for full, short in TEAMS.items())
+    return f'前文\n=== 監督・コーチ ===\n説明\n{{| class="wikitable"\n!球団!!選手名!!備考\n{body}{extra}|}}\n=== 次の節 ===\n|-\n|[[別の人]]||\n'
 
 
 def csv_row(pid, name, team="読売ジャイアンツ", num="10", mv="", d="", kind="4", pos="投手"):
@@ -59,6 +65,71 @@ class Plan(unittest.TestCase):
         out, rep = plan([row("育成一郎", "巨人", "1")], players)
         self.assertEqual([(r["name"], r["team"]) for r in out], [("育成一郎", "巨人")])
         self.assertEqual(rep, {})
+
+
+class Ob(unittest.TestCase):
+    def test_parse(self):
+        got = parse_ob(wikitext('|-\n|[[藤川球児 (投手)|藤川 球児]]||2軍監督\n|-\n|[[三木肇]]||1軍監督 ※「FREE」枠へ移動\n'))
+        self.assertEqual(len(got), 26)
+        self.assertEqual(got[0], {"team": "巨人", "name": "巨人の監督", "position": "監督"})
+        self.assertEqual(got[1], {"team": "巨人", "name": "巨人のコーチ", "position": "コーチ"})
+        self.assertEqual(got[-2], {"team": "楽天", "name": "藤川球児", "position": "監督"})  # 球団セルのない行は直前の球団。表示名の空白は除く
+        self.assertEqual(got[-1], {"team": "FREE", "name": "三木肇", "position": "監督"})
+        self.assertNotIn("別の人", [g["name"] for g in got])  # 次の節は読まない
+
+    def test_parse_rejects_changed_page(self):
+        with self.assertRaises(RuntimeError):
+            parse_ob("=== 別の節 ===\n")
+        with self.assertRaises(RuntimeError):  # 球団が足りない
+            parse_ob('=== 監督・コーチ ===\n{|\n|-\n| rowspan="2" |読売ジャイアンツ||[[A]]||1軍監督\n|}\n')
+        with self.assertRaises(RuntimeError):  # 同じ名前が2つ
+            parse_ob(wikitext("|-\n|[[巨人の監督]]||\n"))
+
+    def test_plan_ob(self):
+        wiki = parse_ob(wikitext())
+        rows = [row("巨人の監督", "巨人", category=OB, position="コーチ"),           # 役職が変わった
+                row("巨人のコーチ", "巨人", category=OB, position="コーチ"),
+                row("消える人", "巨人", category=OB, position="コーチ"),            # 表から消えた
+                row("巨人の監督", "巨人", "1")]                                    # 12球団の同名の人は触らない
+        out, rep = plan_wiki(rows, wiki, OB)
+        self.assertEqual([(r["category"], r["name"], r["position"]) for r in out[:2]], [(OB, "巨人の監督", "監督"), (OB, "巨人のコーチ", "コーチ")])
+        self.assertEqual(out[2], rows[3])
+        self.assertEqual(len(out), 3 + 22)  # 残り11球団の2人ずつが末尾に足される
+        self.assertEqual(out[-1]["npb_id"], "")
+        self.assertEqual(rep["OB（監督・コーチ）の削除"], ["消える人（巨人・コーチ）"])
+        self.assertEqual(rep["OB（監督・コーチ）の変更"], ["巨人の監督：巨人・コーチ→巨人・監督"])
+        self.assertEqual(len(rep["OB（監督・コーチ）の追加"]), 22)
+
+
+WS_WIKI = ('=== 海外移籍選手 ===\n前文\n{| class="wikitable"\n!年!!球団(当時)!!選手名!!備考\n'
+           '|-\n|2011年||北海道日本ハムファイターズ||[[ダルビッシュ有]]||\n'
+           '|-\n|2015年||北海道日本ハムファイターズ||[[大谷翔平]]||KONAMI野球ゲームアンバサダー\n'
+           '|-\n|2024年||中日ドラゴンズ||[[小笠原慎之介]]||別選手扱い\n|}\n=== 次の節 ===\n')
+
+
+class WorldStar(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual([(w["team"], w["name"], w["position"]) for w in parse_world_star(WS_WIKI)],
+                         [(WS, "ダルビッシュ有", ""), (WS, "大谷翔平", ""), (WS, "小笠原慎之介", "")])
+
+    def test_parse_rejects_changed_page(self):
+        with self.assertRaises(RuntimeError):
+            parse_world_star("=== 別の節 ===\n")
+        with self.assertRaises(RuntimeError):  # 選手がいない
+            parse_world_star("=== 海外移籍選手 ===\n{|\n!年!!球団!!選手名!!備考\n|}\n")
+        with self.assertRaises(RuntimeError):  # 備考のセルがなく、選手名の位置がずれる
+            parse_world_star("=== 海外移籍選手 ===\n{|\n|-\n|2011年||日本ハム||[[A]]\n|}\n")
+
+    def test_plan(self):
+        rows = [row("大谷翔平", WS, category=WS, position=""), row("消える人", WS, category=WS, position=""),
+                row("小笠原慎之介", "巨人", "1"),                    # 同名の12球団の人は触らない
+                row("大谷翔平", "日本", category="WBC2026代表", position="")]
+        out, rep = plan_wiki(rows, parse_world_star(WS_WIKI), WS)
+        self.assertEqual([(r["category"], r["team"], r["name"]) for r in out],
+                         [(WS, WS, "大谷翔平"), ("12球団", "巨人", "小笠原慎之介"), ("WBC2026代表", "日本", "大谷翔平"),
+                          (WS, WS, "ダルビッシュ有"), (WS, WS, "小笠原慎之介")])
+        self.assertEqual(dict(rep), {"WORLD STARの削除": ["消える人（WORLD STAR）"],
+                                     "WORLD STARの追加": ["ダルビッシュ有（WORLD STAR）", "小笠原慎之介（WORLD STAR）"]})
 
 
 class Csv(unittest.TestCase):
