@@ -153,6 +153,8 @@ select:disabled { opacity: .5; }
 .history .pool { display: block; font-size: 12px; color: var(--muted); }
 .history-empty { color: var(--muted); font-size: 13px; margin: 0; }
 .note { font-size: 12px; color: var(--muted); margin: 0; }
+footer.foot { display: grid; gap: 6px; border-top: 1px solid var(--rule); padding-top: 14px; }
+footer.foot a { color: inherit; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 420px) {
   .assign { grid-template-columns: 1fr; }
@@ -232,6 +234,11 @@ select:disabled { opacity: .5; }
     <ol class="history" id="history" reversed></ol>
     <p class="history-empty" id="history-empty">まだルーレットを回していません。</p>
   </section>
+
+  <footer class="foot">
+    <p class="note">非公式のファンツールです。KONAMI・NPB・各球団とは関係ありません。ゲーム名や選手名などの権利は、それぞれの権利者に帰属します。</p>
+    <p class="note">データの出典：<a href="https://www.konami.com/games/prospi/2026/jp/ja/" rel="noopener">KONAMI 公式サイト</a>、<a href="https://npb.jp/" rel="noopener">NPB.jp</a>、<a href="https://github.com/armstjc/Nippon-Baseball-Data-Repository" rel="noopener">armstjc/Nippon-Baseball-Data-Repository</a>、<a href="https://ja.wikipedia.org/wiki/%E3%83%97%E3%83%AD%E9%87%8E%E7%90%83%E3%82%B9%E3%83%94%E3%83%AA%E3%83%83%E3%83%842026" rel="noopener">Wikipedia「プロ野球スピリッツ2026」</a>、<a href="https://al-gest.com/prospi2026/" rel="noopener">al-gest</a>。</p>
+  </footer>
 </div>
 
 <script>
