@@ -24,10 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Notion を更新して data.txt を書き出す
+      - name: data.txt を更新する
         shell: bash
         env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           FORCE: ${{ inputs.force && '--force' || '' }}
           DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
         run: python3 sync_roster.py $FORCE $DRY_RUN | tee "$RUNNER_TEMP/report.md"
