@@ -34,6 +34,8 @@ python3 build.py .
 
 https://prospi-draft.symdit.workers.dev/ で公開している。Cloudflare の Git 連携が、このリポジトリのルートを静的アセットとして配信する（Cloudflare が生成する設定の `assets.directory` が `.`）。
 
+配信の設定は `wrangler.jsonc`。`main` 以外のブランチは Cloudflare がプレビューとして公開し、その設定が `previews`（空でよい）。`previews` が無いと、`main` 以外のブランチのビルドが失敗する。
+
 `.assetsignore` で `index.html` 以外を配信しないようにしている。コード・`data.csv`・README・`.github` などは公開されない。ほかのファイルも公開したいときは、`.assetsignore` に `!ファイル名` を足す。
 
 ## 収録選手の同期
