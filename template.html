@@ -228,7 +228,7 @@ footer.foot a { color: inherit; }
           <button type="button" class="primary" id="add">チームに追加</button>
         </div>
       </div>
-      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。ただし、NPBに復帰した選手（WORLD STARと12球団の同名）は別の選手です。スタメン9人の守備は重複できません。データはゲームの{{DATA_VER}}相当。</p>
+      <p class="note">一度候補に出た選手は、二度と出ません。同じ人物（例：WORLD STARと侍ジャパン2023の大谷翔平）はチームに1人までです。ただし、NPBに復帰した選手（WORLD STARと12球団の同名）は別の選手です。スタメン9人の守備は重複できず、投と指（DH）は同時に使えません。データはゲームの{{DATA_VER}}相当。</p>
     </section>
 
     <section class="panel" aria-labelledby="team-h">
@@ -336,13 +336,16 @@ function defFor(slotId, pl) {
   const d = POS_DEF[pl.p];
   return d && !usedDefs()[d] ? d : "";
 }
-// スタメン（1〜9番）で使用中の守備 → その選手
+// スタメン（1〜9番）で選べない守備 → 使用中の選手、または選べない理由
 function usedDefs() {
   const used = {};
   for (const s of SLOTS) {
     const v = state.team[s.id];
     if (s.kind === "bat" && v && v.def && v.def !== "―") used[v.def] = { slot: s, pl: players[v.pid] };
   }
+  // 9人で投と指を両方使うと、野手の守備が1つ埋まらない
+  if (used["指"] && !used["投"]) used["投"] = { why: "指名打者がいるため選べません" };
+  else if (used["投"] && !used["指"]) used["指"] = { why: "投手が打順にいるため選べません" };
   return used;
 }
 const BAT_DEFS = DEFS.filter(d => d !== "―");
@@ -514,7 +517,7 @@ function renderCands() {
       el("option", { value: "", disabled: true, selected: !cur.def }, "守備を選択"),
       ...BAT_DEFS.map(d => {
         const u = used[d];
-        return el("option", { value: d, disabled: !!u, selected: d === cur.def }, u ? d + "（使用中：" + u.slot.label + " " + u.pl.n + "）" : d);
+        return el("option", { value: d, disabled: !!u, selected: d === cur.def }, u ? d + "（" + (u.why || "使用中：" + u.slot.label + " " + u.pl.n) + "）" : d);
       }));
   }
   ds.disabled = fixed;
