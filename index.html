@@ -103,6 +103,18 @@ button.primary:hover:not(:disabled) { background: var(--accent); filter: brightn
 .pass-dots { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
 .pass-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; display: inline-block; }
 .pass-dots i.on { background: currentColor; }
+/* パスボタンにマウスを乗せる（またはキーボードで触れる）と、回数のスライダーが開く。下にすき間を空けないのは、ボタンからスライダーへ動かしても閉じないため。
+   丸の数でボタンが広がっても、スライダーの位置と幅は動かない（別の行に置き、幅を固定している） */
+.pass-wrap { position: relative; display: inline-block; }
+.pass-pop { position: absolute; top: 100%; left: 0; z-index: 5; box-sizing: border-box; width: 170px; display: grid; gap: 4px; padding: 8px 12px 10px; background: var(--card); border: 1.5px solid var(--ink); border-radius: 6px; box-shadow: 3px 3px 0 var(--rule); font-size: 13px; font-weight: 700; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.pass-wrap:hover .pass-pop, .pass-wrap:has(:focus-visible) .pass-pop { opacity: 1; pointer-events: auto; }
+.pass-pop output { color: var(--ink); }
+.pass-pop input { width: 100%; accent-color: var(--accent); margin: 0; }
+/* マウスのない端末では乗せられないので、ボタンの横に出しておく */
+@media (hover: none) {
+  .pass-wrap { display: inline-grid; gap: 6px; }
+  .pass-pop { position: static; opacity: 1; pointer-events: auto; padding: 0; border: 0; box-shadow: none; background: none; }
+}
 .status { font-size: 13px; color: var(--muted); min-height: 1.5em; margin: 0; }
 .status.warn { color: var(--accent); font-weight: 700; }
 
@@ -181,7 +193,7 @@ footer.foot a { color: inherit; }
 <div class="wrap">
   <header class="top">
     <h1><small>PROFESSIONAL BASEBALL SPIRITS 2026 · RANDOM DRAFT</small>プロスピ2026 ランダムドラフト</h1>
-    <p class="lede">収録選手からランダムに出る候補（人数は1〜20人から選べます）のうち1人を指名して、17人のマイチームを作ります。ルーレット1回で選べるのは1人。パスの回数も0〜10回から選べます（初期値は3回）。</p>
+    <p class="lede">収録選手からランダムに出る候補（人数は1〜20人から選べます）のうち1人を指名して、17人のマイチームを作ります。ルーレット1回で選べるのは1人。パスの回数は、パスボタンにマウスを乗せると0〜10回から選べます（初期値は3回）。</p>
   </header>
 
   <div class="grid">
@@ -196,9 +208,13 @@ footer.foot a { color: inherit; }
       </fieldset>
       <div class="controls">
         <label class="size-pick" for="draw-size">候補の人数<select id="draw-size"></select></label>
-        <label class="size-pick" for="pass-max">パスの回数<select id="pass-max"></select></label>
         <button type="button" class="primary" id="spin">ルーレットを回す</button>
-        <button type="button" id="pass">パス<span class="pass-dots" id="pass-dots" aria-hidden="true"></span><span class="sr" id="pass-sr"></span></button>
+      </div>
+      <div class="controls">
+        <span class="pass-wrap">
+          <button type="button" id="pass">パス<span class="pass-dots" id="pass-dots" aria-hidden="true"></span><span class="sr" id="pass-sr"></span></button>
+          <label class="pass-pop" for="pass-max"><span>パスの回数 <output id="pass-max-out"></output></span><input type="range" id="pass-max" step="1"></label>
+        </span>
       </div>
       <p class="status" id="status" role="status" aria-live="polite"></p>
       <div id="cands" class="cands empty">「ルーレットを回す」を押すと、候補の7人がここに出ます。</div>
@@ -415,9 +431,10 @@ function renderControls() {
   dsz.disabled = animating;
   $("spin").disabled = animating || !!cur || isFull() || !anyFilter || pool === 0;
   const pmx = $("pass-max");
-  if (!pmx.options.length) pmx.replaceChildren(...Array.from({ length: PASS_MAX - PASS_MIN + 1 }, (_, i) => el("option", { value: String(PASS_MIN + i) }, (PASS_MIN + i) + "回")));
+  pmx.min = PASS_MIN; pmx.max = PASS_MAX;
   pmx.value = String(state.passMax);
   pmx.disabled = animating;
+  $("pass-max-out").textContent = state.passMax + "回";
   $("pass").disabled = animating || !cur || passesLeft() <= 0;
   $("pass-dots").replaceChildren(...Array.from({ length: state.passMax }, (_, i) => el("i", { class: i < passesLeft() ? "on" : "" })));
   $("pass-sr").textContent = "（残り" + passesLeft() + "回）";
@@ -764,7 +781,7 @@ function saveImage() {
 // ---------- wire ----------
 $("spin").addEventListener("click", spin);
 $("draw-size").addEventListener("change", e => { const n = parseInt(e.target.value, 10); if (n >= DRAW_MIN && n <= DRAW_MAX) { state.drawSize = n; setStatus(state.current ? "次のルーレットから" + n + "人になります。" : ""); save(); render(); } });
-$("pass-max").addEventListener("change", e => { const n = parseInt(e.target.value, 10); if (n >= PASS_MIN && n <= PASS_MAX) { state.passMax = n; setStatus("パスは残り" + passesLeft() + "回です。"); save(); render(); } });
+$("pass-max").addEventListener("input", e => { const n = parseInt(e.target.value, 10); if (n >= PASS_MIN && n <= PASS_MAX) { state.passMax = n; setStatus("パスは残り" + passesLeft() + "回です。"); save(); render(); } });
 $("pass").addEventListener("click", pass);
 $("add").addEventListener("click", addToTeam);
 $("reset").addEventListener("click", reset);
