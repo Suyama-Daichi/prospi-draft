@@ -100,19 +100,19 @@ button:focus-visible, select:focus-visible, .cand:focus-visible, .slot:focus-vis
 button:disabled { opacity: .45; cursor: not-allowed; }
 button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-size: 16px; padding: 10px 20px; }
 button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
-.pass-dots { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; }
-.pass-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; display: inline-block; }
+.pass-dots { display: inline-flex; justify-content: center; align-items: center; gap: 3px; width: 90px; margin-left: 6px; vertical-align: middle; }
+.pass-dots i { flex: 0 1 9px; min-width: 0; aspect-ratio: 1; border-radius: 50%; border: 1.5px solid currentColor; }
 .pass-dots i.on { background: currentColor; }
 /* パスボタンにマウスを乗せる（またはキーボードで触れる）と、回数のスライダーが開く。下にすき間を空けないのは、ボタンからスライダーへ動かしても閉じないため。
-   丸の数でボタンが広がっても、スライダーの位置と幅は動かない（別の行に置き、幅を固定している） */
+   回数を変えてもボタンの幅は変わらず（丸の領域が固定幅）、行が折り返してスライダーが動くことはない */
 .pass-wrap { position: relative; display: inline-block; }
-.pass-pop { position: absolute; top: 100%; left: 0; z-index: 5; box-sizing: border-box; width: 170px; display: grid; gap: 4px; padding: 8px 12px 10px; background: var(--card); border: 1.5px solid var(--ink); border-radius: 6px; box-shadow: 3px 3px 0 var(--rule); font-size: 13px; font-weight: 700; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .12s; }
+.pass-pop { position: absolute; top: 100%; left: 0; z-index: 5; box-sizing: border-box; width: 150px; display: grid; gap: 4px; padding: 8px 12px 10px; background: var(--card); border: 1.5px solid var(--ink); border-radius: 6px; box-shadow: 3px 3px 0 var(--rule); font-size: 13px; font-weight: 700; color: var(--muted); opacity: 0; pointer-events: none; transition: opacity .12s; }
 .pass-wrap:hover .pass-pop, .pass-wrap:has(:focus-visible) .pass-pop { opacity: 1; pointer-events: auto; }
 .pass-pop output { color: var(--ink); }
 .pass-pop input { width: 100%; accent-color: var(--accent); margin: 0; }
 /* マウスのない端末では乗せられないので、ボタンの横に出しておく */
 @media (hover: none) {
-  .pass-wrap { display: inline-grid; gap: 6px; }
+  .pass-wrap { display: inline-flex; align-items: center; gap: 8px; }
   .pass-pop { position: static; opacity: 1; pointer-events: auto; padding: 0; border: 0; box-shadow: none; background: none; }
 }
 .status { font-size: 13px; color: var(--muted); min-height: 1.5em; margin: 0; }
@@ -209,8 +209,6 @@ footer.foot a { color: inherit; }
       <div class="controls">
         <label class="size-pick" for="draw-size">候補の人数<select id="draw-size"></select></label>
         <button type="button" class="primary" id="spin">ルーレットを回す</button>
-      </div>
-      <div class="controls">
         <span class="pass-wrap">
           <button type="button" id="pass">パス<span class="pass-dots" id="pass-dots" aria-hidden="true"></span><span class="sr" id="pass-sr"></span></button>
           <label class="pass-pop" for="pass-max"><span>パスの回数 <output id="pass-max-out"></output></span><input type="range" id="pass-max" step="1"></label>
