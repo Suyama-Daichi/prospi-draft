@@ -181,7 +181,7 @@ footer.foot a { color: inherit; }
 <div class="wrap">
   <header class="top">
     <h1><small>PROFESSIONAL BASEBALL SPIRITS 2026 · RANDOM DRAFT</small>プロスピ2026 ランダムドラフト</h1>
-    <p class="lede">収録選手からランダムに出る候補（人数は1〜20人から選べます）のうち1人を指名して、17人のマイチームを作ります。ルーレット1回で選べるのは1人。パスは3回まで。</p>
+    <p class="lede">収録選手からランダムに出る候補（人数は1〜20人から選べます）のうち1人を指名して、17人のマイチームを作ります。ルーレット1回で選べるのは1人。パスの回数も0〜10回から選べます（初期値は3回）。</p>
   </header>
 
   <div class="grid">
@@ -196,6 +196,7 @@ footer.foot a { color: inherit; }
       </fieldset>
       <div class="controls">
         <label class="size-pick" for="draw-size">候補の人数<select id="draw-size"></select></label>
+        <label class="size-pick" for="pass-max">パスの回数<select id="pass-max"></select></label>
         <button type="button" class="primary" id="spin">ルーレットを回す</button>
         <button type="button" id="pass">パス<span class="pass-dots" id="pass-dots" aria-hidden="true"></span><span class="sr" id="pass-sr"></span></button>
       </div>
@@ -262,10 +263,12 @@ const CAT_VAR = ["--c-npb", "--c-wbc", "--c-jpn", "--c-ob", "--c-ws"];
 const RAW = /*DATA*/[];
 // 選手IDはデータの並び順なので、データが変わったら古い保存を読まないよう保存キーにデータのハッシュを含める
 const STORE_KEY = "prospi2026-random-draft-v1-" + [...JSON.stringify(RAW)].reduce((h, c) => Math.imul(h, 31) + c.codePointAt(0) | 0, 0).toString(36);
-const PASS_MAX = 3;
+const PASS_DEFAULT = 3;
+const PASS_MIN = 0, PASS_MAX = 10;
 const DRAW_DEFAULT = 7;
 const DRAW_MIN = 1, DRAW_MAX = 20;
 const drawSize = () => state.drawSize;
+const passesLeft = () => Math.max(0, state.passMax - state.rounds.filter(r => r.type === "pass").length);
 
 const SLOTS = [
   ...Array.from({ length: 9 }, (_, i) => ({ id: "b" + (i + 1), label: (i + 1) + "番", group: "スタメン", kind: "bat" })),
@@ -332,7 +335,7 @@ const BAT_DEFS = DEFS.filter(d => d !== "―");
 
 // ---------- state ----------
 function freshState() {
-  return { team: {}, seen: [], passes: PASS_MAX, rounds: [], current: null, filters: [true, true, true, true, true], drawSize: DRAW_DEFAULT };
+  return { team: {}, seen: [], passMax: PASS_DEFAULT, rounds: [], current: null, filters: [true, true, true, true, true], drawSize: DRAW_DEFAULT };
 }
 let state = load();
 function load() {
@@ -342,6 +345,7 @@ function load() {
       const ok = id => Number.isInteger(id) && id >= 0 && id < players.length;
       if (Object.values(s.team).every(v => v && ok(v.pid)) && s.seen.every(ok)) {
         if (!Number.isInteger(s.drawSize) || s.drawSize < DRAW_MIN || s.drawSize > DRAW_MAX) s.drawSize = DRAW_DEFAULT;
+        if (!Number.isInteger(s.passMax) || s.passMax < PASS_MIN || s.passMax > PASS_MAX) s.passMax = PASS_DEFAULT;
         return s;
       }
     }
@@ -410,9 +414,13 @@ function renderControls() {
   dsz.value = String(drawSize());
   dsz.disabled = animating;
   $("spin").disabled = animating || !!cur || isFull() || !anyFilter || pool === 0;
-  $("pass").disabled = animating || !cur || state.passes <= 0;
-  $("pass-dots").replaceChildren(...Array.from({ length: PASS_MAX }, (_, i) => el("i", { class: i < state.passes ? "on" : "" })));
-  $("pass-sr").textContent = "（残り" + state.passes + "回）";
+  const pmx = $("pass-max");
+  if (!pmx.options.length) pmx.replaceChildren(...Array.from({ length: PASS_MAX - PASS_MIN + 1 }, (_, i) => el("option", { value: String(PASS_MIN + i) }, (PASS_MIN + i) + "回")));
+  pmx.value = String(state.passMax);
+  pmx.disabled = animating;
+  $("pass").disabled = animating || !cur || passesLeft() <= 0;
+  $("pass-dots").replaceChildren(...Array.from({ length: state.passMax }, (_, i) => el("i", { class: i < passesLeft() ? "on" : "" })));
+  $("pass-sr").textContent = "（残り" + passesLeft() + "回）";
   $("round-meta").textContent = "第" + (state.rounds.length + (cur ? 1 : 0)) + "巡 ・ 出る可能性のある選手 " + pool + "人";
   let msg = statusMsg.text, warn = statusMsg.warn;
   if (animating) { msg = "ルーレット回転中…"; warn = false; }
@@ -420,7 +428,7 @@ function renderControls() {
     if (isFull()) msg = "チームが完成しました。画像やテキストでシェアできます。";
     else if (!anyFilter) { msg = "ルーレットに出す選手の区分を1つ以上選んでください。"; warn = true; }
     else if (pool === 0) { msg = "条件に合う選手が残っていません。ルーレットに出す区分を増やしてください。"; warn = true; }
-    else if (cur && cur.sel == null) msg = state.passes > 0 ? "候補から1人選んでください。選ばない場合はパスできます。" : "パスは使い切りました。候補から1人選んでください。";
+    else if (cur && cur.sel == null) msg = passesLeft() > 0 ? "候補から1人選んでください。選ばない場合はパスできます。" : "これ以上パスできません。候補から1人選んでください。";
     else if (!cur) msg = "「ルーレットを回す」で候補を" + drawSize() + "人出しましょう。";
     else if (cur && cur.sel != null && !targetSlot) msg = "起用枠を選んでください。使用中の枠には入れられません。";
     else if (cur && cur.sel != null && targetSlot && SLOT_BY_ID[targetSlot].kind === "bat" && !cur.def) msg = "守備を選んでください。スタメンの守備は重複できません。";
@@ -630,12 +638,11 @@ function addToTeam() {
 }
 function pass() {
   const cur = state.current;
-  if (!cur || state.passes <= 0) return;
-  state.passes--;
+  if (!cur || passesLeft() <= 0) return;
   state.rounds.push({ no: state.rounds.length + 1, cands: cur.cands, type: "pass" });
   state.current = null;
   targetSlot = null;
-  setStatus("パスしました（残り" + state.passes + "回）。");
+  setStatus("パスしました（残り" + passesLeft() + "回）。");
   save();
   render();
 }
@@ -648,10 +655,11 @@ function reset() {
     return;
   }
   clearTimeout(resetArmed); resetArmed = null; btn.textContent = "リセット";
-  const filters = state.filters, size = state.drawSize;
+  const filters = state.filters, size = state.drawSize, passMax = state.passMax;
   state = freshState();
   state.filters = filters;
   state.drawSize = size;
+  state.passMax = passMax;
   targetSlot = null;
   setStatus("リセットしました。");
   hideShare();
@@ -756,6 +764,7 @@ function saveImage() {
 // ---------- wire ----------
 $("spin").addEventListener("click", spin);
 $("draw-size").addEventListener("change", e => { const n = parseInt(e.target.value, 10); if (n >= DRAW_MIN && n <= DRAW_MAX) { state.drawSize = n; setStatus(state.current ? "次のルーレットから" + n + "人になります。" : ""); save(); render(); } });
+$("pass-max").addEventListener("change", e => { const n = parseInt(e.target.value, 10); if (n >= PASS_MIN && n <= PASS_MAX) { state.passMax = n; setStatus("パスは残り" + passesLeft() + "回です。"); save(); render(); } });
 $("pass").addEventListener("click", pass);
 $("add").addEventListener("click", addToTeam);
 $("reset").addEventListener("click", reset);
