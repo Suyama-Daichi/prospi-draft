@@ -42,9 +42,9 @@ https://prospi-draft.d0nchan.com/ で公開している。`*.workers.dev` の ht
 
 ## アクセス解析
 
-Google タグマネージャー（`GTM-WG75GG92`）経由で Google アナリティクス（GA4）を使う。GTM を読み込むのは `prospi-draft.d0nchan.com` と `prospi-draft.symdit.workers.dev` だけで、ブランチのプレビューとローカルでは計測しない。ページのフッターに、Google アナリティクスを使っていることを書いている。
+Google アナリティクス（GA4、測定 ID `G-BYTX3HPX7S`）を gtag.js で使う。gtag.js を読み込むのは `prospi-draft.d0nchan.com` と `prospi-draft.symdit.workers.dev` だけで、ブランチのプレビューとローカルでは計測しない。ページのフッターに、Google アナリティクスを使っていることを書いている。
 
-ページは次のカスタムイベントを `dataLayer` に送る。GA4 に送るには、GTM で「カスタム イベント」のトリガーと GA4 イベントのタグを作る。
+ページは次のカスタムイベントを GA4 に送る。
 
 | イベント | タイミング |
 | --- | --- |

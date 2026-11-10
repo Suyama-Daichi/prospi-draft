@@ -9,10 +9,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet">
 <script>
-// 計測は本番だけ。ブランチのプレビュー（<ブランチ>-prospi-draft.symdit.workers.dev）とローカルでは GTM を読み込まない
+// 計測は本番だけ。ブランチのプレビュー（<ブランチ>-prospi-draft.symdit.workers.dev）とローカルでは gtag.js を読み込まない
 window.dataLayer = window.dataLayer || [];
+function gtag() { dataLayer.push(arguments); }
 if (["prospi-draft.d0nchan.com", "prospi-draft.symdit.workers.dev"].includes(location.hostname)) {
-  (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-WG75GG92');
+  const s = document.createElement("script");
+  s.async = true;
+  s.src = "https://www.googletagmanager.com/gtag/js?id=G-BYTX3HPX7S";
+  document.head.append(s);
+  gtag("js", new Date());
+  gtag("config", "G-BYTX3HPX7S");
 }
 </script>
 <style>
@@ -380,8 +386,8 @@ let targetSlot = null;
 let animating = false;
 let statusMsg = { text: "", warn: false };
 function setStatus(text, warn = false) { statusMsg = { text, warn }; }
-// GTM のカスタムイベント（GTM を読み込まないプレビューとローカルでは dataLayer に積まれるだけ）
-const track = event => window.dataLayer.push({ event });
+// GA4 のカスタムイベント（gtag.js を読み込まないプレビューとローカルでは dataLayer に積まれるだけ）
+const track = event => gtag("event", event);
 
 function renderFilters() {
   const seen = new Set(state.seen);
