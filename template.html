@@ -312,7 +312,7 @@ function teamLabel(pl) {
 }
 function posLabel(pl) { return pl.p || "—"; }
 // 同姓同名でも、同じ12球団同士・同じWBC同士は別人（例：ソフトバンクと中日のロドリゲス）。
-// WORLD STAR（NPBを離れた選手）と12球団の同名も別人（NPBに復帰した選手。例：小笠原慎之介。ゲームでも別選手扱い）。
+// WORLD STAR（NPBを離れた選手）と12球団の同名も別人（NPBに復帰した選手）。
 // それ以外の区分をまたぐ同名は同一人物とみなす。
 function samePerson(a, b) {
   if (a.key !== b.key) return false;

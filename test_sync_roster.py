@@ -110,7 +110,7 @@ WS_WIKI = ('=== 海外移籍選手 ===\n前文\n{| class="wikitable"\n!年!!球�
 class WorldStar(unittest.TestCase):
     def test_parse(self):
         self.assertEqual([(w["team"], w["name"], w["position"]) for w in parse_world_star(WS_WIKI)],
-                         [(WS, "ダルビッシュ有", ""), (WS, "大谷翔平", ""), (WS, "小笠原慎之介", "")])
+                         [(WS, "ダルビッシュ有", ""), (WS, "大谷翔平", "")])  # 小笠原慎之介は WS_EXCLUDE で除く
 
     def test_parse_rejects_changed_page(self):
         with self.assertRaises(RuntimeError):
@@ -127,9 +127,9 @@ class WorldStar(unittest.TestCase):
         out, rep = plan_wiki(rows, parse_world_star(WS_WIKI), WS)
         self.assertEqual([(r["category"], r["team"], r["name"]) for r in out],
                          [(WS, WS, "大谷翔平"), ("12球団", "巨人", "小笠原慎之介"), ("WBC2026代表", "日本", "大谷翔平"),
-                          (WS, WS, "ダルビッシュ有"), (WS, WS, "小笠原慎之介")])
+                          (WS, WS, "ダルビッシュ有")])
         self.assertEqual(dict(rep), {"WORLD STARの削除": ["消える人（WORLD STAR）"],
-                                     "WORLD STARの追加": ["ダルビッシュ有（WORLD STAR）", "小笠原慎之介（WORLD STAR）"]})
+                                     "WORLD STARの追加": ["ダルビッシュ有（WORLD STAR）"]})
 
 
 class Csv(unittest.TestCase):

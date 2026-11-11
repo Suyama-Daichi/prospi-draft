@@ -18,6 +18,7 @@ KONAMI = "https://www.konami.com/games/prospi/2026/jp/ja/"
 WIKI = "プロ野球スピリッツ2026"  # この記事の「監督・コーチ」「海外移籍選手」の表が OB・WORLD STAR の一覧
 OB = "OB（監督・コーチ）"
 WS = "WORLD STAR"
+WS_EXCLUDE = {"小笠原慎之介"}  # Wikipedia の「海外移籍選手」の表にいても、WORLD STAR に入れない選手
 ROSTERS = "https://api.github.com/repos/armstjc/Nippon-Baseball-Data-Repository/releases/tags/rosters"
 UA = "prospi-draft-sync (+https://github.com/Suyama-Daichi/prospi-draft)"
 TEAMS = {
@@ -85,6 +86,7 @@ def parse_ob(wikitext):
 def parse_world_star(wikitext):
     """Wikipedia の「海外移籍選手」の表（年||球団(当時)||選手名||備考）を [{team, name, position}] にする。"""
     out = [{"team": WS, "name": wiki_name(cells[-2]), "position": ""} for cells in wiki_table(wikitext, "海外移籍選手")]
+    out = [w for w in out if w["name"] not in WS_EXCLUDE]
     if not out:
         raise RuntimeError("Wikipedia の「海外移籍選手」の表に選手がいません（表の形式が変わった可能性）")
     return unique(out)
